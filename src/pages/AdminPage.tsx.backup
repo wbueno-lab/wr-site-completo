@@ -1,0 +1,2192 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRealtime } from '@/contexts/RealtimeContext';
+import { Tables } from '@/integrations/supabase/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { ImageUpload } from '@/components/ImageUpload';
+import { SimpleImageUpload } from '@/components/SimpleImageUpload';
+import { MultiImageUpload } from '@/components/MultiImageUpload';
+import { ImageGallery } from '@/components/ImageGallery';
+import { OrderDetailModal } from '@/components/OrderDetailModal';
+import ContactMessagesManager from '@/components/ContactMessagesManager';
+import { 
+  Package, 
+  ShoppingBag, 
+  Users, 
+  TrendingUp, 
+  Plus, 
+  Edit, 
+  Trash2,
+  Eye,
+  Settings,
+  MapPin,
+  MessageSquare
+} from 'lucide-react';
+
+type Product = Tables<'products'> & {
+  categories?: { name: string } | null;
+};
+
+interface Order {
+  id: string;
+  order_number: string;
+  total_amount: number;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  user_id: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  shipping_address?: any;
+  payment_method?: string | null;
+  payment_details?: any;
+  order_items?: any[];
+  profiles?: { full_name: string | null; email: string; phone?: string } | null;
+}
+
+const AdminPage = () => {
+  const { user, profile } = useAuth();
+  const { products, orders, categories, brands, isLoading, excludedDeliveredOrders, excludeDeliveredOrder } = useRealtime();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Debug logs
+  console.log('🔍 AdminPage - Debug Info:');
+  console.log('👤 User:', user);
+  console.log('👤 Profile:', profile);
+  console.log('👤 Is Admin:', profile?.is_admin);
+  console.log('📦 Products:', products?.length || 0);
+  console.log('📦 Products data:', products);
+  console.log('📋 Orders:', orders?.length || 0);
+  console.log('🏷️ Categories:', categories?.length || 0);
+  console.log('🏷️ Categories data:', categories);
+  console.log('🏷️ Brands:', brands?.length || 0);
+  console.log('🏷️ Brands data:', brands);
+  console.log('⏳ IsLoading:', isLoading);
+  console.log('📋 Orders data:', orders);
+  console.log('🎯 Active Tab:', activeTab);
+  
+  // Verificar se há erros na consulta de pedidos
+  if (orders && orders.length === 0 && !isLoading) {
+    console.warn('⚠️ Nenhum pedido encontrado. Verificando possíveis causas...');
+    console.warn('⚠️ User ID:', user?.id);
+    console.warn('⚠️ Profile ID:', profile?.id);
+    console.warn('⚠️ Is Admin:', profile?.is_admin);
+  }
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [deletingOrder, setDeletingOrder] = useState<Order | null>(null);
+  const [isDeletingMultiple, setIsDeletingMultiple] = useState(false);
+
+
+
+
+  // Função alternativa para criar produto caso haja problema com colunas específicas
+  const createProductWithFallback = async (productData: any) => {
+    try {
+      // Primeira tentativa: inserir com todas as colunas
+      const { data, error } = await supabase
+        .from('products')
+        .insert(productData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error: any) {
+      // Se o erro for relacionado a colunas específicas, tenta sem elas
+      if (error.message.includes('available_sizes') || error.message.includes('gallery_images')) {
+        console.warn('Tentando criar produto sem colunas problemáticas devido a problema de cache...');
+        
+        const { available_sizes, gallery_images, ...productDataWithoutProblematicColumns } = productData;
+        
+        const { data, error: insertError } = await supabase
+          .from('products')
+          .insert(productDataWithoutProblematicColumns)
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        // Atualiza com as colunas problemáticas separadamente
+        const updateData: any = {};
+        
+        if (available_sizes && available_sizes.length > 0) {
+          updateData.available_sizes = available_sizes;
+        }
+        
+        if (gallery_images && gallery_images.length > 0) {
+          updateData.gallery_images = gallery_images;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          const { error: updateError } = await supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', data.id);
+
+          if (updateError) {
+            console.warn('Erro ao atualizar colunas problemáticas:', updateError);
+          }
+        }
+
+        return { success: true };
+      }
+      throw error;
+    }
+  };
+
+  // Função alternativa para atualizar produto caso haja problema com available_sizes
+  const updateProductWithFallback = async (productData: any, productId: string) => {
+    try {
+      // Primeira tentativa: atualizar com todos os campos
+      const { error } = await supabase
+        .from('products')
+        .update(productData)
+        .eq('id', productId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error: any) {
+      // Se o erro for relacionado à coluna available_sizes ou gallery_images, tenta sem elas
+      if (error.message.includes('available_sizes') || error.message.includes('gallery_images')) {
+        console.warn('Tentando atualizar produto sem colunas problemáticas devido a problema de cache...');
+        
+        const { available_sizes, gallery_images, ...productDataWithoutProblematicColumns } = productData;
+        
+        const { error: updateError } = await supabase
+          .from('products')
+          .update(productDataWithoutProblematicColumns)
+          .eq('id', productId);
+
+        if (updateError) throw updateError;
+
+        // Se temos available_sizes, tenta atualizar separadamente
+        if (available_sizes && available_sizes.length > 0) {
+          const { error: sizesError } = await supabase
+            .from('products')
+            .update({ available_sizes })
+            .eq('id', productId);
+
+          if (sizesError) {
+            console.warn('Erro ao atualizar available_sizes:', sizesError);
+          }
+        }
+
+        // Se temos gallery_images, tenta atualizar separadamente
+        if (gallery_images && gallery_images.length > 0) {
+          const { error: galleryError } = await supabase
+            .from('products')
+            .update({ gallery_images } as any)
+            .eq('id', productId);
+
+          if (galleryError) {
+            console.warn('Erro ao atualizar gallery_images:', galleryError);
+          }
+        }
+
+        return { success: true };
+      }
+      throw error;
+    }
+  };
+
+  // New product form
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    description: '',
+    price: '',
+    original_price: '',
+    stock_quantity: '',
+    category_id: '',
+    brand_id: '',
+    is_new: false,
+    is_promo: false,
+    image_url: '',
+    gallery_images: [] as string[],
+    available_sizes: [] as number[],
+    // Especificações técnicas
+    material: '',
+    certifications: [] as string[],
+    weight_grams: '',
+    shell_material: '',
+    liner_material: '',
+    ventilation_system: '',
+    visor_type: '',
+    chin_strap_type: '',
+    safety_standards: [] as string[],
+    color_options: [] as string[],
+    warranty_period: '',
+    country_of_origin: '',
+    brand_model: '',
+    helmet_type: '',
+    shell_sizes: [] as string[],
+    impact_absorption: '',
+    penetration_resistance: '',
+    retention_system: '',
+    // additional_features: [] as string[]
+  });
+
+  // A verificação de admin agora é feita pelo ProtectedRoute
+  // Os dados são carregados automaticamente pelo RealtimeContext
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validação básica
+    if (!newProduct.name.trim()) {
+      toast({
+        title: "Erro de Validação",
+        description: "O nome do produto é obrigatório.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!newProduct.category_id || newProduct.category_id.trim() === '') {
+      toast({
+        title: "Erro de Validação",
+        description: "Selecione uma categoria para o produto.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Verificar se há categorias disponíveis
+    if (!categories || categories.length === 0) {
+      toast({
+        title: "Erro de Sistema",
+        description: "Nenhuma categoria disponível. Por favor, recarregue a página ou entre em contato com o suporte.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Verificar se a categoria selecionada existe
+    const selectedCategory = categories.find(cat => cat.id === newProduct.category_id);
+    if (!selectedCategory) {
+      toast({
+        title: "Erro de Validação",
+        description: "Categoria selecionada não existe. Por favor, selecione uma categoria válida.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validar se category_id é um UUID válido
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(newProduct.category_id)) {
+      toast({
+        title: "Erro de Validação",
+        description: "Categoria selecionada é inválida. Por favor, selecione uma categoria válida.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!newProduct.price || parseFloat(newProduct.price) <= 0) {
+      toast({
+        title: "Erro de Validação",
+        description: "O preço deve ser maior que zero.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validação para produtos em promoção
+    if (newProduct.is_promo && (!newProduct.original_price || parseFloat(newProduct.original_price) <= parseFloat(newProduct.price))) {
+      toast({
+        title: "Erro de Validação",
+        description: "Para produtos em promoção, o preço original deve ser maior que o preço promocional.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const productData = {
+        name: newProduct.name,
+        description: newProduct.description,
+        price: parseFloat(newProduct.price),
+        original_price: newProduct.original_price ? parseFloat(newProduct.original_price) : null,
+        stock_quantity: parseInt(newProduct.stock_quantity),
+        category_id: newProduct.category_id,
+        brand_id: newProduct.brand_id || null,
+        is_new: newProduct.is_new,
+        is_promo: newProduct.is_promo,
+        is_active: true,
+        sku: `WR-${Date.now()}`,
+        image_url: newProduct.image_url || (newProduct.gallery_images.length > 0 ? newProduct.gallery_images[0] : '/lovable-uploads/2aadae8f-c01d-4d0c-acc2-ad56fe5ef243.png'),
+        gallery_images: newProduct.gallery_images,
+        available_sizes: newProduct.available_sizes.length > 0 ? newProduct.available_sizes : null,
+        // Especificações técnicas
+        material: newProduct.material || null,
+        certifications: newProduct.certifications.length > 0 ? newProduct.certifications : null,
+        weight_grams: newProduct.weight_grams ? parseInt(newProduct.weight_grams) : null,
+        shell_material: newProduct.shell_material || null,
+        liner_material: newProduct.liner_material || null,
+        ventilation_system: newProduct.ventilation_system || null,
+        visor_type: newProduct.visor_type || null,
+        chin_strap_type: newProduct.chin_strap_type || null,
+        safety_standards: newProduct.safety_standards.length > 0 ? newProduct.safety_standards : null,
+        color_options: newProduct.color_options.length > 0 ? newProduct.color_options : null,
+        warranty_period: newProduct.warranty_period ? parseInt(newProduct.warranty_period) : null,
+        country_of_origin: newProduct.country_of_origin || null,
+        brand_model: newProduct.brand_model || null,
+        helmet_type: newProduct.helmet_type || null,
+        shell_sizes: newProduct.shell_sizes.length > 0 ? newProduct.shell_sizes : null,
+        impact_absorption: newProduct.impact_absorption || null,
+        penetration_resistance: newProduct.penetration_resistance || null,
+        retention_system: newProduct.retention_system || null
+        // additional_features: // newProduct.additional_features.length > 0 ? // newProduct.additional_features : null
+      };
+
+
+      // Usa a função de fallback para lidar com problemas de cache
+      await createProductWithFallback(productData);
+
+      toast({
+        title: "Produto criado!",
+        description: "O produto foi adicionado com sucesso."
+      });
+
+      setNewProduct({
+        name: '',
+        description: '',
+        price: '',
+        original_price: '',
+        stock_quantity: '',
+        category_id: '',
+        brand_id: '',
+        is_new: false,
+        is_promo: false,
+        image_url: '',
+        gallery_images: [],
+        available_sizes: [],
+        // Especificações técnicas
+        material: '',
+        certifications: [],
+        weight_grams: '',
+        shell_material: '',
+        liner_material: '',
+        ventilation_system: '',
+        visor_type: '',
+        chin_strap_type: '',
+        safety_standards: [],
+        color_options: [],
+        warranty_period: '',
+        country_of_origin: '',
+        brand_model: '',
+        helmet_type: '',
+        shell_sizes: [],
+        impact_absorption: '',
+        penetration_resistance: '',
+        retention_system: '',
+        // additional_features: []
+      });
+
+      // Os dados serão atualizados automaticamente via RealtimeContext
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleProductStatus = async (productId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: !currentStatus })
+        .eq('id', productId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status atualizado",
+        description: "O status do produto foi alterado."
+      });
+
+      // Os dados serão atualizados automaticamente via RealtimeContext
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status atualizado",
+        description: "O status do pedido foi alterado."
+      });
+
+      // Os dados serão atualizados automaticamente via RealtimeContext
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setIsOrderModalOpen(true);
+  };
+
+  const deleteOrder = async (orderId: string, orderNumber: string) => {
+    try {
+      // Primeiro, excluir os itens do pedido
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (itemsError) throw itemsError;
+
+      // Depois, excluir o pedido
+      const { error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (orderError) throw orderError;
+
+      toast({
+        title: "Pedido excluído",
+        description: `O pedido #${orderNumber} foi excluído com sucesso.`
+      });
+
+      // Os dados serão atualizados automaticamente via RealtimeContext
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+      throw error; // Re-throw para que o erro seja capturado pela função chamadora
+    }
+  };
+
+  const confirmDeleteOrder = (order: Order) => {
+    setDeletingOrder(order);
+  };
+
+  const handleConfirmDeleteOrder = async () => {
+    if (deletingOrder) {
+      await deleteOrder(deletingOrder.id, deletingOrder.order_number);
+      setDeletingOrder(null);
+    }
+  };
+
+  const cancelDeleteOrder = () => {
+    setDeletingOrder(null);
+  };
+
+  const deleteDeliveredOrders = async () => {
+    try {
+      setIsDeletingMultiple(true);
+      
+      // Verificar se o usuário é admin
+      if (!profile?.is_admin) {
+        toast({
+          title: "Acesso negado",
+          description: "Apenas administradores podem excluir pedidos.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Buscar todos os pedidos entregues que não estão excluídos
+      const deliveredOrders = orders.filter(order => 
+        order.status === 'delivered' && !excludedDeliveredOrders.has(order.id)
+      );
+      
+      if (deliveredOrders.length === 0) {
+        toast({
+          title: "Nenhum pedido entregue",
+          description: "Não há pedidos entregues para excluir.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Excluir cada pedido entregue do banco de dados
+      for (const order of deliveredOrders) {
+        try {
+          await deleteOrder(order.id, order.order_number);
+          // Marcar como excluído visualmente
+          excludeDeliveredOrder(order.id);
+        } catch (error) {
+          throw error; // Re-throw para parar o processo se houver erro
+        }
+      }
+
+      toast({
+        title: "Pedidos excluídos",
+        description: `${deliveredOrders.length} pedidos entregues foram excluídos com sucesso.`
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingMultiple(false);
+    }
+  };
+
+  const deleteProduct = async (productId: string, productName: string) => {
+    try {
+      // Primeiro, verifica se o produto tem pedidos associados
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('id')
+        .eq('product_id', productId)
+        .limit(1);
+
+      if (orderItemsError) throw orderItemsError;
+
+      if (orderItems && orderItems.length > 0) {
+        toast({
+          title: "Não é possível remover",
+          description: "Este produto possui pedidos associados e não pode ser removido.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Remove o produto
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Produto removido",
+        description: `O produto "${productName}" foi removido com sucesso.`
+      });
+
+      // Os dados serão atualizados automaticamente via RealtimeContext
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const confirmDeleteProduct = (product: Product) => {
+    setDeletingProduct(product);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deletingProduct) {
+      await deleteProduct(deletingProduct.id, deletingProduct.name);
+      setDeletingProduct(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeletingProduct(null);
+  };
+
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setNewProduct({
+      name: product.name,
+      description: product.description,
+      price: product.price.toString(),
+      original_price: product.original_price?.toString() || '',
+      stock_quantity: product.stock_quantity.toString(),
+      category_id: product.category_id || '',
+      brand_id: product.brand_id || '',
+      is_new: product.is_new,
+      is_promo: product.is_promo,
+      image_url: product.image_url || '',
+      gallery_images: Array.isArray(product.gallery_images) ? product.gallery_images as string[] : [],
+      available_sizes: product.available_sizes || [],
+      // Especificações técnicas
+      material: (product as any).material || '',
+      certifications: Array.isArray((product as any).certifications) ? (product as any).certifications : [],
+      weight_grams: (product as any).weight_grams?.toString() || '',
+      shell_material: (product as any).shell_material || '',
+      liner_material: (product as any).liner_material || '',
+      ventilation_system: (product as any).ventilation_system || '',
+      visor_type: (product as any).visor_type || '',
+      chin_strap_type: (product as any).chin_strap_type || '',
+      safety_standards: Array.isArray((product as any).safety_standards) ? (product as any).safety_standards : [],
+      color_options: Array.isArray((product as any).color_options) ? (product as any).color_options : [],
+      warranty_period: (product as any).warranty_period?.toString() || '',
+      country_of_origin: (product as any).country_of_origin || '',
+      brand_model: (product as any).brand_model || '',
+      helmet_type: (product as any).helmet_type || '',
+      shell_sizes: Array.isArray((product as any).shell_sizes) ? (product as any).shell_sizes : [],
+      impact_absorption: (product as any).impact_absorption || '',
+      penetration_resistance: (product as any).penetration_resistance || '',
+      retention_system: (product as any).retention_system || ''
+      // additional_features: Array.isArray((product as any).additional_features) ? (product as any).additional_features : []
+    });
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingProduct) return;
+
+    // Validação para produtos em promoção
+    if (newProduct.is_promo && (!newProduct.original_price || parseFloat(newProduct.original_price) <= parseFloat(newProduct.price))) {
+      toast({
+        title: "Erro de Validação",
+        description: "Para produtos em promoção, o preço original deve ser maior que o preço promocional.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const productData = {
+        name: newProduct.name,
+        description: newProduct.description,
+        price: parseFloat(newProduct.price),
+        original_price: newProduct.original_price ? parseFloat(newProduct.original_price) : null,
+        stock_quantity: parseInt(newProduct.stock_quantity),
+        category_id: newProduct.category_id,
+        brand_id: newProduct.brand_id || null,
+        is_new: newProduct.is_new,
+        is_promo: newProduct.is_promo,
+        image_url: newProduct.image_url || (newProduct.gallery_images.length > 0 ? newProduct.gallery_images[0] : '/lovable-uploads/2aadae8f-c01d-4d0c-acc2-ad56fe5ef243.png'),
+        gallery_images: newProduct.gallery_images,
+        available_sizes: newProduct.available_sizes.length > 0 ? newProduct.available_sizes : null,
+        // Especificações técnicas
+        material: newProduct.material || null,
+        certifications: newProduct.certifications.length > 0 ? newProduct.certifications : null,
+        weight_grams: newProduct.weight_grams ? parseInt(newProduct.weight_grams) : null,
+        shell_material: newProduct.shell_material || null,
+        liner_material: newProduct.liner_material || null,
+        ventilation_system: newProduct.ventilation_system || null,
+        visor_type: newProduct.visor_type || null,
+        chin_strap_type: newProduct.chin_strap_type || null,
+        safety_standards: newProduct.safety_standards.length > 0 ? newProduct.safety_standards : null,
+        color_options: newProduct.color_options.length > 0 ? newProduct.color_options : null,
+        warranty_period: newProduct.warranty_period ? parseInt(newProduct.warranty_period) : null,
+        country_of_origin: newProduct.country_of_origin || null,
+        brand_model: newProduct.brand_model || null,
+        helmet_type: newProduct.helmet_type || null,
+        shell_sizes: newProduct.shell_sizes.length > 0 ? newProduct.shell_sizes : null,
+        impact_absorption: newProduct.impact_absorption || null,
+        penetration_resistance: newProduct.penetration_resistance || null,
+        retention_system: newProduct.retention_system || null
+        // additional_features: newProduct.additional_features.length > 0 ? newProduct.additional_features : null
+      };
+
+      // Usa a função de fallback para lidar com problemas de cache
+      await updateProductWithFallback(productData, editingProduct.id);
+
+      toast({
+        title: "Produto atualizado!",
+        description: "O produto foi atualizado com sucesso."
+      });
+
+      setEditingProduct(null);
+      setNewProduct({
+        name: '',
+        description: '',
+        price: '',
+        original_price: '',
+        stock_quantity: '',
+        category_id: '',
+        brand_id: '',
+        is_new: false,
+        is_promo: false,
+        image_url: '',
+        gallery_images: [],
+        available_sizes: [],
+        // Especificações técnicas
+        material: '',
+        certifications: [],
+        weight_grams: '',
+        shell_material: '',
+        liner_material: '',
+        ventilation_system: '',
+        visor_type: '',
+        chin_strap_type: '',
+        safety_standards: [],
+        color_options: [],
+        warranty_period: '',
+        country_of_origin: '',
+        brand_model: '',
+        helmet_type: '',
+        shell_sizes: [],
+        impact_absorption: '',
+        penetration_resistance: '',
+        retention_system: '',
+        // additional_features: []
+      });
+
+      // Os dados serão atualizados automaticamente via RealtimeContext
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingProduct(null);
+    setNewProduct({
+      name: '',
+      description: '',
+      price: '',
+      original_price: '',
+      stock_quantity: '',
+      category_id: '',
+      brand_id: '',
+      is_new: false,
+      is_promo: false,
+      image_url: '',
+      gallery_images: [],
+      available_sizes: [],
+      // Especificações técnicas
+      material: '',
+      certifications: [],
+      weight_grams: '',
+      shell_material: '',
+      liner_material: '',
+      ventilation_system: '',
+      visor_type: '',
+      chin_strap_type: '',
+      safety_standards: [],
+      color_options: [],
+      warranty_period: '',
+      country_of_origin: '',
+      brand_model: '',
+      helmet_type: '',
+      shell_sizes: [],
+      impact_absorption: '',
+      penetration_resistance: '',
+      retention_system: '',
+        // additional_features: []
+    });
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Carregando painel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-brand-dark-lighter to-brand-dark">
+      {/* Header com gradiente e sombra */}
+      <div className="bg-gradient-to-r from-brand-green to-brand-green-dark shadow-xl">
+        <div className="container py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">Painel Administrativo</h1>
+              <p className="text-green-100 text-lg">Gerencie produtos, pedidos e muito mais</p>
+            </div>
+            <div className="hidden md:flex items-center space-x-4">
+              <div className="bg-background/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                <p className="text-white text-sm">Bem-vindo, {profile?.full_name || 'Admin'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-8 bg-brand-dark-light shadow-lg rounded-xl p-1">
+            <TabsTrigger 
+              value="dashboard" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-green data-[state=active]:to-brand-green-dark data-[state=active]:text-white rounded-lg transition-all duration-200 text-foreground hover:text-white"
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Dashboard
+              </div>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="products"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-green data-[state=active]:to-brand-green-dark data-[state=active]:text-white rounded-lg transition-all duration-200 text-foreground hover:text-white"
+            >
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Produtos
+              </div>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="orders"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-green data-[state=active]:to-brand-green-dark data-[state=active]:text-white rounded-lg transition-all duration-200 text-foreground hover:text-white"
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4" />
+                Pedidos
+              </div>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="messages"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-green data-[state=active]:to-brand-green-dark data-[state=active]:text-white rounded-lg transition-all duration-200 text-foreground hover:text-white"
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Mensagens
+              </div>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Card Produtos Ativos */}
+              <Card className="bg-gradient-to-br from-brand-green/10 to-brand-green/20 border-brand-green/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-brand-green">Produtos Ativos</CardTitle>
+                  <div className="p-2 bg-brand-green rounded-lg">
+                    <Package className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-brand-green mb-1">
+                    {products.filter(p => p.is_active).length}
+                  </div>
+                  <p className="text-xs text-brand-green/70">Total de produtos ativos</p>
+                </CardContent>
+              </Card>
+
+              {/* Card Pedidos Hoje */}
+              <Card className="bg-gradient-to-br from-brand-dark-light to-brand-dark-lighter border-brand-dark-lighter hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-white">Pedidos Hoje</CardTitle>
+                  <div className="p-2 bg-brand-green rounded-lg">
+                    <ShoppingBag className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-white mb-1">
+                    {orders.filter(o => 
+                      new Date(o.created_at).toDateString() === new Date().toDateString()
+                    ).length}
+                  </div>
+                  <p className="text-xs text-foreground">Pedidos realizados hoje</p>
+                </CardContent>
+              </Card>
+
+              {/* Card Receita Mensal */}
+              <Card className="bg-gradient-to-br from-brand-green/10 to-brand-green/20 border-brand-green/30 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-brand-green">Receita Mensal</CardTitle>
+                  <div className="p-2 bg-brand-green rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-brand-green mb-1">
+                    {formatPrice(
+                      orders
+                        .filter(o => o.payment_status === 'paid')
+                        .reduce((acc, o) => acc + o.total_amount, 0)
+                    )}
+                  </div>
+                  <p className="text-xs text-brand-green/70">Receita total paga</p>
+                </CardContent>
+              </Card>
+
+              {/* Card Estoque Baixo */}
+              <Card className="bg-gradient-to-br from-brand-dark-light to-brand-dark-lighter border-brand-dark-lighter hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-white">Estoque Baixo</CardTitle>
+                  <div className="p-2 bg-brand-green rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-white mb-1">
+                    {products.filter(p => p.stock_quantity < 5).length}
+                  </div>
+                  <p className="text-xs text-foreground">Produtos com estoque baixo</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="products">
+            <div className="p-8">
+              <div className="bg-red-500 text-white p-8 rounded-lg text-center">
+                <h1 className="text-3xl font-bold mb-4">🚨 TESTE BÁSICO ABA PRODUTOS</h1>
+                <p className="text-xl mb-4">Se você está vendo isso, a aba está funcionando!</p>
+                <p className="text-lg">Produtos: {products?.length || 0}</p>
+                <p className="text-lg">Categorias: {categories?.length || 0}</p>
+                <p className="text-lg">Marcas: {brands?.length || 0}</p>
+                <p className="text-lg">Carregando: {isLoading ? 'SIM' : 'NÃO'}</p>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="orders">
+                  <CardTitle className="text-2xl font-bold text-white mb-2">
+                    {editingProduct ? 'Editar Produto' : 'Criar Novo Produto'}
+                  </CardTitle>
+                  <CardDescription className="text-green-100 text-lg">
+                    {editingProduct ? 'Atualize as informações do produto' : 'Adicione um novo produto ao catálogo'}
+                  </CardDescription>
+                </div>
+                <CardContent className="p-8">
+                  <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-sm font-semibold text-white">Nome do Produto</Label>
+                      <Input
+                        id="name"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                        required
+                        className="h-12 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                        placeholder="Digite o nome do produto"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="category" className="text-sm font-semibold text-white">Categoria</Label>
+                        {(!categories || categories.length === 0) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.reload()}
+                            className="text-xs"
+                          >
+                            Recarregar
+                          </Button>
+                        )}
+                      </div>
+                      <Select value={newProduct.category_id} onValueChange={(value) => 
+                        setNewProduct({ ...newProduct, category_id: value })
+                      }>
+                        <SelectTrigger className="h-12 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white">
+                          <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories && categories.length > 0 ? (
+                            categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              Nenhuma categoria disponível
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-white">Marca (Opcional)</Label>
+                      <div className="flex items-center space-x-2">
+                        <Select value={newProduct.brand_id} onValueChange={(value) => 
+                          setNewProduct({ ...newProduct, brand_id: value })
+                        }>
+                          <SelectTrigger className="h-12 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white">
+                            <SelectValue placeholder="Selecione uma marca" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">
+                              <span className="text-gray-400">Nenhuma marca</span>
+                            </SelectItem>
+                            {brands && brands.length > 0 ? (
+                              brands.map((brand) => (
+                                <SelectItem key={brand.id} value={brand.id}>
+                                  {brand.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="" disabled>
+                                Nenhuma marca disponível
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="price" className="text-sm font-semibold text-white">Preço</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                        required
+                        className="h-12 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="original_price" className="text-sm font-semibold text-white">Preço Original (Opcional)</Label>
+                      <Input
+                        id="original_price"
+                        type="number"
+                        step="0.01"
+                        value={newProduct.original_price}
+                        onChange={(e) => setNewProduct({ ...newProduct, original_price: e.target.value })}
+                        className="h-12 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    {/* Checkbox de Promoção */}
+                    <div className="md:col-span-2 space-y-4">
+                      <div className="flex items-center space-x-3 p-4 bg-brand-dark-lighter rounded-xl border-2 border-gray-600">
+                        <Checkbox
+                          id="is_promo"
+                          checked={newProduct.is_promo}
+                          onCheckedChange={(checked) => {
+                            setNewProduct({ 
+                              ...newProduct, 
+                              is_promo: checked as boolean,
+                              // Se desmarcar promoção, limpar preço original
+                              original_price: checked ? newProduct.original_price : ''
+                            });
+                          }}
+                          className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                        />
+                        <div className="flex-1">
+                          <Label 
+                            htmlFor="is_promo" 
+                            className="text-sm font-semibold text-white cursor-pointer flex items-center gap-2"
+                          >
+                            <span className="text-red-400">🔥</span>
+                            Produto em Promoção
+                          </Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Marque para adicionar este produto à aba de promoções
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Campos de Promoção - só aparecem quando is_promo está marcado */}
+                      {newProduct.is_promo && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-red-500/10 border-2 border-red-500/30 rounded-xl">
+                          <div className="space-y-2">
+                            <Label htmlFor="promo_original_price" className="text-sm font-semibold text-red-400">
+                              Preço Original da Promoção *
+                            </Label>
+                            <Input
+                              id="promo_original_price"
+                              type="number"
+                              step="0.01"
+                              value={newProduct.original_price}
+                              onChange={(e) => setNewProduct({ ...newProduct, original_price: e.target.value })}
+                              required={newProduct.is_promo}
+                              className="h-12 border-2 border-red-500/50 focus:border-red-400 focus:ring-2 focus:ring-red-400/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Preço antes do desconto"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="promo_current_price" className="text-sm font-semibold text-red-400">
+                              Preço com Desconto *
+                            </Label>
+                            <Input
+                              id="promo_current_price"
+                              type="number"
+                              step="0.01"
+                              value={newProduct.price}
+                              onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                              required={newProduct.is_promo}
+                              className="h-12 border-2 border-red-500/50 focus:border-red-400 focus:ring-2 focus:ring-red-400/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Preço promocional"
+                            />
+                          </div>
+                          {newProduct.original_price && newProduct.price && (
+                            <div className="md:col-span-2">
+                              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
+                                <p className="text-sm text-red-300 font-medium">
+                                  💰 Desconto: {Math.round(((parseFloat(newProduct.original_price) - parseFloat(newProduct.price)) / parseFloat(newProduct.original_price)) * 100)}% OFF
+                                </p>
+                                <p className="text-xs text-red-400 mt-1">
+                                  Economia: {formatPrice(parseFloat(newProduct.original_price) - parseFloat(newProduct.price))}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="stock" className="text-sm font-semibold text-white">Estoque</Label>
+                      <Input
+                        id="stock"
+                        type="number"
+                        value={newProduct.stock_quantity}
+                        onChange={(e) => setNewProduct({ ...newProduct, stock_quantity: e.target.value })}
+                        required
+                        className="h-12 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-white">Tamanhos Disponíveis</Label>
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3 p-4 bg-brand-dark-lighter rounded-xl border-2 border-gray-600">
+                        {Array.from({ length: 11 }, (_, i) => i + 54).map((size) => (
+                          <div key={size} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`size-${size}`}
+                              checked={newProduct.available_sizes.includes(size)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setNewProduct({
+                                    ...newProduct,
+                                    available_sizes: [...newProduct.available_sizes, size]
+                                  });
+                                } else {
+                                  setNewProduct({
+                                    ...newProduct,
+                                    available_sizes: newProduct.available_sizes.filter(s => s !== size)
+                                  });
+                                }
+                              }}
+                              className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                            />
+                            <Label 
+                              htmlFor={`size-${size}`} 
+                              className="text-sm text-white cursor-pointer"
+                            >
+                              {size}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Selecione os tamanhos disponíveis para este capacete (54 a 64)
+                      </p>
+                    </div>
+
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="description" className="text-sm font-semibold text-white">Descrição</Label>
+                      <Textarea
+                        id="description"
+                        value={newProduct.description}
+                        onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                        rows={4}
+                        className="border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-xl transition-all duration-200 resize-none bg-brand-dark-lighter text-white placeholder-gray-400"
+                        placeholder="Descreva o produto..."
+                      />
+                    </div>
+
+                    {/* Seção de Especificações Técnicas */}
+                    <div className="md:col-span-2">
+                      <div className="bg-gradient-to-r from-brand-green/10 to-brand-green/20 border-2 border-brand-green/30 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-bold text-brand-green flex items-center gap-2">
+                            <Package className="h-5 w-5" />
+                            Especificações Técnicas
+                          </h3>
+                          <div className="bg-brand-green/20 text-brand-green text-xs px-3 py-1 rounded-full border border-brand-green/30">
+                            Opcional
+                          </div>
+                        </div>
+                        <p className="text-sm text-foreground mb-4">
+                          Preencha as especificações técnicas para fornecer informações detalhadas sobre o capacete. 
+                          Todos os campos são opcionais e podem ser preenchidos posteriormente.
+                        </p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Material Principal */}
+                          <div className="space-y-2">
+                            <Label htmlFor="material" className="text-sm font-semibold text-white">
+                              Material Principal <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="material"
+                              value={newProduct.material}
+                              onChange={(e) => setNewProduct({ ...newProduct, material: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Fibra de carbono, Policarbonato"
+                            />
+                          </div>
+
+                          {/* Peso */}
+                          <div className="space-y-2">
+                            <Label htmlFor="weight_grams" className="text-sm font-semibold text-white">
+                              Peso (gramas) <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="weight_grams"
+                              type="number"
+                              value={newProduct.weight_grams}
+                              onChange={(e) => setNewProduct({ ...newProduct, weight_grams: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: 1200"
+                            />
+                          </div>
+
+                          {/* Tipo de Capacete */}
+                          <div className="space-y-2">
+                            <Label htmlFor="helmet_type" className="text-sm font-semibold text-white">
+                              Tipo de Capacete <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Select value={newProduct.helmet_type} onValueChange={(value) => 
+                              setNewProduct({ ...newProduct, helmet_type: value })
+                            }>
+                              <SelectTrigger className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white">
+                                <SelectValue placeholder="Selecione o tipo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="integral">Integral</SelectItem>
+                                <SelectItem value="modular">Modular</SelectItem>
+                                <SelectItem value="aberto">Aberto</SelectItem>
+                                <SelectItem value="cross">Cross</SelectItem>
+                                <SelectItem value="touring">Touring</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* País de Origem */}
+                          <div className="space-y-2">
+                            <Label htmlFor="country_of_origin" className="text-sm font-semibold text-white">
+                              País de Origem <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="country_of_origin"
+                              value={newProduct.country_of_origin}
+                              onChange={(e) => setNewProduct({ ...newProduct, country_of_origin: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Brasil, China, Taiwan"
+                            />
+                          </div>
+
+                          {/* Modelo da Marca */}
+                          <div className="space-y-2">
+                            <Label htmlFor="brand_model" className="text-sm font-semibold text-white">
+                              Modelo da Marca <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="brand_model"
+                              value={newProduct.brand_model}
+                              onChange={(e) => setNewProduct({ ...newProduct, brand_model: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: AGV K3 SV, Shoei RF-1400"
+                            />
+                          </div>
+
+                          {/* Garantia */}
+                          <div className="space-y-2">
+                            <Label htmlFor="warranty_period" className="text-sm font-semibold text-white">
+                              Garantia (meses) <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="warranty_period"
+                              type="number"
+                              value={newProduct.warranty_period}
+                              onChange={(e) => setNewProduct({ ...newProduct, warranty_period: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: 12"
+                            />
+                          </div>
+
+                          {/* Material da Casca */}
+                          <div className="space-y-2">
+                            <Label htmlFor="shell_material" className="text-sm font-semibold text-white">
+                              Material da Casca <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="shell_material"
+                              value={newProduct.shell_material}
+                              onChange={(e) => setNewProduct({ ...newProduct, shell_material: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Fibra de carbono, ABS"
+                            />
+                          </div>
+
+                          {/* Material do Forro */}
+                          <div className="space-y-2">
+                            <Label htmlFor="liner_material" className="text-sm font-semibold text-white">
+                              Material do Forro <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="liner_material"
+                              value={newProduct.liner_material}
+                              onChange={(e) => setNewProduct({ ...newProduct, liner_material: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: EPS, EPP"
+                            />
+                          </div>
+
+                          {/* Sistema de Ventilação */}
+                          <div className="space-y-2">
+                            <Label htmlFor="ventilation_system" className="text-sm font-semibold text-white">
+                              Sistema de Ventilação <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="ventilation_system"
+                              value={newProduct.ventilation_system}
+                              onChange={(e) => setNewProduct({ ...newProduct, ventilation_system: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: 13 entradas de ar"
+                            />
+                          </div>
+
+                          {/* Tipo de Viseira */}
+                          <div className="space-y-2">
+                            <Label htmlFor="visor_type" className="text-sm font-semibold text-white">
+                              Tipo de Viseira <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="visor_type"
+                              value={newProduct.visor_type}
+                              onChange={(e) => setNewProduct({ ...newProduct, visor_type: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Clara, Fumê, Fotocromática"
+                            />
+                          </div>
+
+                          {/* Tipo de Jugular */}
+                          <div className="space-y-2">
+                            <Label htmlFor="chin_strap_type" className="text-sm font-semibold text-white">
+                              Tipo de Jugular <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="chin_strap_type"
+                              value={newProduct.chin_strap_type}
+                              onChange={(e) => setNewProduct({ ...newProduct, chin_strap_type: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Dupla D, Micrométrico"
+                            />
+                          </div>
+
+                          {/* Absorção de Impacto */}
+                          <div className="space-y-2">
+                            <Label htmlFor="impact_absorption" className="text-sm font-semibold text-white">
+                              Absorção de Impacto <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="impact_absorption"
+                              value={newProduct.impact_absorption}
+                              onChange={(e) => setNewProduct({ ...newProduct, impact_absorption: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: EPS de alta densidade"
+                            />
+                          </div>
+
+                          {/* Resistência à Penetração */}
+                          <div className="space-y-2">
+                            <Label htmlFor="penetration_resistance" className="text-sm font-semibold text-white">
+                              Resistência à Penetração <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="penetration_resistance"
+                              value={newProduct.penetration_resistance}
+                              onChange={(e) => setNewProduct({ ...newProduct, penetration_resistance: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Casca de fibra de carbono"
+                            />
+                          </div>
+
+                          {/* Sistema de Retenção */}
+                          <div className="space-y-2">
+                            <Label htmlFor="retention_system" className="text-sm font-semibold text-white">
+                              Sistema de Retenção <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <Input
+                              id="retention_system"
+                              value={newProduct.retention_system}
+                              onChange={(e) => setNewProduct({ ...newProduct, retention_system: e.target.value })}
+                              className="h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white placeholder-gray-400"
+                              placeholder="Ex: Jugular dupla D"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Campos de Array - Certificações */}
+                        <div className="mt-6 space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-white">
+                              Certificações de Segurança <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {['DOT', 'ECE', 'SNELL', 'FIM', 'JIS'].map((cert) => (
+                                <div key={cert} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`cert-${cert}`}
+                                    checked={newProduct.certifications.includes(cert)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          certifications: [...newProduct.certifications, cert]
+                                        });
+                                      } else {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          certifications: newProduct.certifications.filter(c => c !== cert)
+                                        });
+                                      }
+                                    }}
+                                    className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                                  />
+                                  <Label htmlFor={`cert-${cert}`} className="text-sm text-white cursor-pointer">
+                                    {cert}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Padrões de Segurança */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-white">
+                              Padrões de Segurança <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {['DOT FMVSS 218', 'ECE R22.05', 'SNELL M2020', 'FIM 2019'].map((standard) => (
+                                <div key={standard} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`standard-${standard}`}
+                                    checked={newProduct.safety_standards.includes(standard)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          safety_standards: [...newProduct.safety_standards, standard]
+                                        });
+                                      } else {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          safety_standards: newProduct.safety_standards.filter(s => s !== standard)
+                                        });
+                                      }
+                                    }}
+                                    className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                                  />
+                                  <Label htmlFor={`standard-${standard}`} className="text-sm text-white cursor-pointer">
+                                    {standard}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Opções de Cores */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-white">
+                              Opções de Cores <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {['Preto', 'Branco', 'Vermelho', 'Azul', 'Verde', 'Amarelo', 'Prata', 'Dourado'].map((color) => (
+                                <div key={color} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`color-${color}`}
+                                    checked={newProduct.color_options.includes(color)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          color_options: [...newProduct.color_options, color]
+                                        });
+                                      } else {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          color_options: newProduct.color_options.filter(c => c !== color)
+                                        });
+                                      }
+                                    }}
+                                    className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                                  />
+                                  <Label htmlFor={`color-${color}`} className="text-sm text-white cursor-pointer">
+                                    {color}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Tamanhos da Casca */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-white">
+                              Tamanhos da Casca <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                              {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                                <div key={size} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`shell-${size}`}
+                                    checked={newProduct.shell_sizes.includes(size)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          shell_sizes: [...newProduct.shell_sizes, size]
+                                        });
+                                      } else {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          shell_sizes: newProduct.shell_sizes.filter(s => s !== size)
+                                        });
+                                      }
+                                    }}
+                                    className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                                  />
+                                  <Label htmlFor={`shell-${size}`} className="text-sm text-white cursor-pointer">
+                                    {size}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Recursos Adicionais */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-white">
+                              Recursos Adicionais <span className="text-muted-foreground text-xs">(opcional)</span>
+                            </Label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {/* Temporariamente desabilitado até a migração ser aplicada
+                              {['Bluetooth', 'GPS', 'LED', 'Pinlock', 'Sistema de ventilação', 'Forro removível'].map((feature) => (
+                                <div key={feature} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`feature-${feature}`}
+                                    checked={newProduct.additional_features.includes(feature)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          additional_features: [...newProduct.additional_features, feature]
+                                        });
+                                      } else {
+                                        setNewProduct({
+                                          ...newProduct,
+                                          additional_features: newProduct.additional_features.filter(f => f !== feature)
+                                        });
+                                      }
+                                    }}
+                                    className="border-brand-green data-[state=checked]:bg-brand-green data-[state=checked]:border-brand-green"
+                                  />
+                                  <Label htmlFor={`feature-${feature}`} className="text-sm text-white cursor-pointer">
+                                    {feature}
+                                  </Label>
+                                </div>
+                              ))}
+                              */}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-semibold text-white mb-2 block">
+                        Imagem Principal do Produto
+                      </Label>
+                      <SimpleImageUpload
+                        onImageUploaded={(imageUrl) => {
+                          setNewProduct({ ...newProduct, image_url: imageUrl });
+                        }}
+                        currentImageUrl={newProduct.image_url}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <MultiImageUpload
+                        onImagesUploaded={(images) => {
+                          setNewProduct({ ...newProduct, gallery_images: images });
+                        }}
+                        currentImages={newProduct.gallery_images}
+                        maxImages={10}
+                      />
+                    </div>
+
+
+                    <div className="md:col-span-2 flex gap-4 pt-4">
+                      <Button 
+                        type="submit" 
+                        className="flex items-center gap-2 bg-gradient-to-r from-brand-green to-brand-green-dark hover:from-brand-green-light hover:to-brand-green text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
+                      >
+                        <Plus className="h-5 w-5" />
+                        {editingProduct ? 'Atualizar Produto' : 'Criar Produto'}
+                      </Button>
+                      {editingProduct && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={cancelEdit}
+                          className="px-8 py-3 rounded-xl font-semibold border-2 border-gray-600 hover:border-gray-500 hover:bg-brand-dark-lighter text-white transition-all duration-200"
+                        >
+                          Cancelar
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Products List */}
+              <Card className="bg-brand-dark-light shadow-xl border-0 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-brand-dark to-brand-dark-light p-6">
+                  <CardTitle className="text-2xl font-bold text-white">Produtos Cadastrados</CardTitle>
+                  <p className="text-foreground mt-1">Gerencie todos os produtos do catálogo</p>
+                </div>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {!products || products.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground text-lg">
+                          {isLoading ? 'Carregando produtos...' : 'Nenhum produto encontrado'}
+                        </p>
+                        {!isLoading && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Clique em "Criar Novo Produto" para adicionar o primeiro produto.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      products.map((product) => (
+                      <div key={product.id} className="group bg-gradient-to-r from-brand-dark-lighter to-brand-dark-light border-2 border-gray-700 hover:border-brand-green/50 rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-white">{product.name}</h3>
+                              <div className="flex gap-2">
+                                {product.is_new && <Badge className="bg-brand-green/20 text-brand-green border-brand-green/30">Novo</Badge>}
+                                {product.is_promo && <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Promoção</Badge>}
+                                {!product.is_active && <Badge className="bg-muted text-muted-foreground border-muted">Inativo</Badge>}
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-1">{(product as any).categories?.name || 'Sem categoria'}</p>
+                            <p className="text-sm font-medium text-foreground mb-2">
+                              {formatPrice(product.price)} • Estoque: {product.stock_quantity}
+                            </p>
+                            {product.available_sizes && product.available_sizes.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                <span className="text-xs text-muted-foreground">Tamanhos:</span>
+                                {product.available_sizes
+                                  .sort((a, b) => a - b)
+                                  .map((size) => (
+                                    <Badge 
+                                      key={size} 
+                                      className="text-xs bg-brand-green/20 text-brand-green border-brand-green/30 px-2 py-1"
+                                    >
+                                      {size}
+                                    </Badge>
+                                  ))}
+                              </div>
+                            )}
+                            
+                            {/* Especificações técnicas resumidas */}
+                            <div className="space-y-1">
+                              {(product as any).material && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Material:</span>
+                                  <span className="text-xs text-white">{(product as any).material}</span>
+                                </div>
+                              )}
+                              {(product as any).weight_grams && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Peso:</span>
+                                  <span className="text-xs text-white">{(product as any).weight_grams}g</span>
+                                </div>
+                              )}
+                              {(product as any).helmet_type && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Tipo:</span>
+                                  <span className="text-xs text-white capitalize">{(product as any).helmet_type}</span>
+                                </div>
+                              )}
+                              {(product as any).certifications && Array.isArray((product as any).certifications) && (product as any).certifications.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  <span className="text-xs text-muted-foreground">Certificações:</span>
+                                  {(product as any).certifications.map((cert: string) => (
+                                    <Badge 
+                                      key={cert} 
+                                      className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30 px-1 py-0.5"
+                                    >
+                                      {cert}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleProductStatus(product.id, product.is_active)}
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                product.is_active 
+                                  ? 'border-orange-500/50 text-orange-400 hover:bg-orange-500/10' 
+                                  : 'border-brand-green/50 text-brand-green hover:bg-brand-green/10'
+                              }`}
+                            >
+                              {product.is_active ? 'Desativar' : 'Ativar'}
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditProduct(product)}
+                              className="px-4 py-2 rounded-lg font-medium border-brand-green/50 text-brand-green hover:bg-brand-green/10 transition-all duration-200"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmDeleteProduct(product)}
+                              className="px-4 py-2 rounded-lg font-medium border-red-500/50 text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Remover
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="orders">
+            <Card className="bg-brand-dark-light shadow-xl border-0 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-brand-green to-brand-green-dark p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-2xl font-bold text-white">Pedidos Recentes</CardTitle>
+                      <p className="text-green-100 mt-1">Gerencie todos os pedidos da loja</p>
+                    </div>
+                    {orders.filter(order => order.status === 'delivered').length > 0 && (
+                      <Button
+                        onClick={deleteDeliveredOrders}
+                        disabled={isDeletingMultiple}
+                        className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200 disabled:opacity-50"
+                      >
+                        {isDeletingMultiple ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Excluindo...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir Entregues ({orders.filter(order => order.status === 'delivered' && !excludedDeliveredOrders.has(order.id)).length})
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {orders.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-white mb-2">Nenhum pedido encontrado</h3>
+                      <p className="text-gray-400">Não há pedidos para exibir no momento.</p>
+                    </div>
+                  ) : (
+                    orders
+                      .filter(order => !(order.status === 'delivered' && excludedDeliveredOrders.has(order.id)))
+                      .map((order) => (
+                    <div key={order.id} className="group bg-gradient-to-r from-brand-dark-lighter to-brand-dark-light border-2 border-gray-700 hover:border-brand-green/50 rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h3 className="text-lg font-semibold text-white">#{order.order_number}</h3>
+                            <div className="flex gap-2">
+                              <Badge className={`${
+                                order.status === 'delivered' 
+                                  ? 'bg-brand-green/20 text-brand-green border-brand-green/30' 
+                                  : order.status === 'cancelled'
+                                  ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                  : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              }`}>
+                                {order.status}
+                              </Badge>
+                              <Badge className={`${
+                                order.payment_status === 'paid' 
+                                  ? 'bg-brand-green/20 text-brand-green border-brand-green/30' 
+                                  : 'bg-red-500/20 text-red-400 border-red-500/30'
+                              }`}>
+                                {order.payment_status}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          {/* Informações do Cliente */}
+                          <div className="mb-4">
+                            <p className="text-sm text-muted-foreground mb-1">
+                              <strong className="text-white">Cliente:</strong> {order.customer_name || 'Usuário não encontrado'}
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-1">
+                              <strong className="text-white">Email:</strong> {order.customer_email || 'N/A'}
+                            </p>
+                            <p className="text-sm text-muted-foreground mb-1">
+                              <strong className="text-white">Telefone:</strong> {order.customer_phone || 'N/A'}
+                            </p>
+                            <p className="text-sm font-medium text-foreground">
+                              <strong className="text-white">Total:</strong> {formatPrice(order.total_amount)} • {formatDate(order.created_at)}
+                            </p>
+                          </div>
+
+                          {/* Produtos do Pedido */}
+                          {(order as any).order_items && (order as any).order_items.length > 0 && (
+                            <div className="bg-brand-dark/30 rounded-xl p-4 mb-4 border border-gray-600">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Package className="h-5 w-5 text-brand-green" />
+                                <h4 className="text-sm font-semibold text-white">Produtos do Pedido</h4>
+                              </div>
+                              <div className="space-y-3">
+                                {(order as any).order_items.map((item: any, index: number) => {
+                                  const productName = item.product?.name || item.product_snapshot?.name || 'Produto não encontrado';
+                                  const productImage = item.product?.image_url || item.product_snapshot?.image_url;
+                                  
+                                  return (
+                                    <div key={item.id || index} className="bg-brand-dark/50 rounded-lg p-3 border border-gray-700">
+                                      <div className="flex items-start gap-3">
+                                        {productImage ? (
+                                          <img
+                                            src={productImage}
+                                            alt={productName}
+                                            className="w-12 h-12 object-cover rounded-lg border border-gray-600"
+                                          />
+                                        ) : (
+                                          <div className="w-12 h-12 bg-gray-700 rounded-lg border border-gray-600 flex items-center justify-center">
+                                            <Package className="h-6 w-6 text-gray-400" />
+                                          </div>
+                                        )}
+                                        <div className="flex-1">
+                                          <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                              <h5 className="text-white font-bold text-lg leading-tight">
+                                                {productName}
+                                              </h5>
+                                              <div className="flex items-center gap-4 text-sm text-gray-300">
+                                                <span className="flex items-center gap-1">
+                                                  <Package className="h-3 w-3" />
+                                                  Qtd: <span className="font-medium text-white">{item.quantity}</span>
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                  <TrendingUp className="h-3 w-3" />
+                                                  Unit: <span className="font-medium text-white">{formatPrice(item.unit_price)}</span>
+                                                </span>
+                                              </div>
+                                              {/* Informações adicionais do produto */}
+                                              {(item.product_snapshot?.brand_model || item.product_snapshot?.helmet_type) && (
+                                                <div className="text-xs text-gray-400 mt-1">
+                                                  {item.product_snapshot?.brand_model && (
+                                                    <span className="mr-3">Modelo: {item.product_snapshot.brand_model}</span>
+                                                  )}
+                                                  {item.product_snapshot?.helmet_type && (
+                                                    <span>Tipo: {item.product_snapshot.helmet_type}</span>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div className="text-right">
+                                              <p className="text-white font-bold text-lg">
+                                                {formatPrice(item.total_price)}
+                                              </p>
+                                              <p className="text-xs text-gray-400">
+                                                Total
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Dados de Moradia/Endereço de Entrega */}
+                          {order.shipping_address && (
+                            <div className="bg-brand-dark/50 rounded-xl p-4 mb-4 border border-gray-600">
+                              <div className="flex items-center gap-2 mb-3">
+                                <MapPin className="h-5 w-5 text-brand-green" />
+                                <h4 className="text-sm font-semibold text-white">Endereço de Entrega</h4>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <p className="text-gray-300">
+                                    <strong className="text-white">Nome:</strong> {(order.shipping_address as any)?.full_name || (order.shipping_address as any)?.street || 'N/A'}
+                                  </p>
+                                  <p className="text-gray-300">
+                                    <strong className="text-white">Endereço:</strong> {(order.shipping_address as any)?.street || 'N/A'}, {(order.shipping_address as any)?.number || 'N/A'}
+                                  </p>
+                                  {(order.shipping_address as any)?.complement && (
+                                    <p className="text-gray-300">
+                                      <strong className="text-white">Complemento:</strong> {(order.shipping_address as any)?.complement}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-gray-300">
+                                    <strong className="text-white">Bairro:</strong> {(order.shipping_address as any)?.neighborhood || 'N/A'}
+                                  </p>
+                                  <p className="text-gray-300">
+                                    <strong className="text-white">Cidade:</strong> {(order.shipping_address as any)?.city || 'N/A'} - {(order.shipping_address as any)?.state || 'N/A'}
+                                  </p>
+                                  <p className="text-gray-300">
+                                    <strong className="text-white">CEP:</strong> {(order.shipping_address as any)?.zip_code || (order.shipping_address as any)?.zipCode || 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Informações de Pagamento */}
+                          {order.payment_method && (
+                            <div className="bg-brand-dark/30 rounded-lg p-3 mb-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Settings className="h-4 w-4 text-brand-green" />
+                                <span className="text-sm font-semibold text-white">Pagamento: {order.payment_method}</span>
+                              </div>
+                              {order.payment_details && (
+                                <div className="text-xs text-gray-400">
+                                  <p>ID do Pagamento: {(order.payment_details as any)?.id || 'N/A'}</p>
+                                  {(order.payment_details as any)?.status && (
+                                    <p>Status MP: {(order.payment_details as any)?.status}</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-3 ml-6">
+                          <Select 
+                            value={order.status} 
+                            onValueChange={(value) => updateOrderStatus(order.id, value)}
+                          >
+                            <SelectTrigger className="w-40 h-10 border-2 border-gray-600 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 rounded-lg transition-all duration-200 bg-brand-dark-lighter text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pendente</SelectItem>
+                              <SelectItem value="processing">Processando</SelectItem>
+                              <SelectItem value="shipped">Enviado</SelectItem>
+                              <SelectItem value="delivered">Entregue</SelectItem>
+                              <SelectItem value="cancelled">Cancelado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewOrder(order)}
+                            className="px-4 py-2 rounded-lg font-medium border-brand-green/50 text-brand-green hover:bg-brand-green/10 transition-all duration-200"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver
+                          </Button>
+                          {(order.status === 'delivered' || order.status === 'cancelled') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmDeleteOrder(order)}
+                              className="px-4 py-2 rounded-lg font-medium border-red-500/50 text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Excluir
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="messages">
+            <Card className="bg-brand-dark-light shadow-xl border-0 rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-brand-green to-brand-green-dark p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold text-white">Mensagens de Contato</CardTitle>
+                    <p className="text-green-100 mt-1">Gerencie todas as mensagens enviadas pelos clientes</p>
+                  </div>
+                </div>
+              </div>
+              <CardContent className="p-6">
+                <ContactMessagesManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+        </Tabs>
+      </div>
+
+      {/* Diálogo de Confirmação de Exclusão de Produto */}
+      {deletingProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-brand-dark-light border-2 border-red-500/30 rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-500/20 rounded-full">
+                <Trash2 className="h-6 w-6 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Confirmar Exclusão</h3>
+            </div>
+            
+            <p className="text-foreground mb-2">
+              Tem certeza que deseja remover o produto:
+            </p>
+            <p className="text-white font-semibold mb-4">
+              "{deletingProduct.name}"
+            </p>
+            
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
+              <p className="text-red-300 text-sm">
+                ⚠️ Esta ação não pode ser desfeita. O produto será permanentemente removido do sistema.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition-all duration-200"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Sim, Remover
+              </Button>
+              <Button
+                onClick={cancelDelete}
+                variant="outline"
+                className="flex-1 border-border text-foreground hover:bg-muted font-semibold py-2 rounded-lg transition-all duration-200"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Modal de Detalhes do Pedido */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder as any}
+          isOpen={isOrderModalOpen}
+          onClose={() => {
+            setIsOrderModalOpen(false);
+            setSelectedOrder(null);
+          }}
+        />
+      )}
+
+      {/* Diálogo de Confirmação de Exclusão de Pedido */}
+      {deletingOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-brand-dark-light border-2 border-red-500/30 rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-500/20 rounded-full">
+                <Trash2 className="h-6 w-6 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Confirmar Exclusão de Pedido</h3>
+            </div>
+            
+            <p className="text-foreground mb-2">
+              Tem certeza que deseja excluir o pedido:
+            </p>
+            <p className="text-white font-semibold mb-4">
+              "#{deletingOrder.order_number}" - {deletingOrder.customer_name}
+            </p>
+            
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
+              <p className="text-red-300 text-sm">
+                ⚠️ Esta ação não pode ser desfeita. O pedido e todos os seus itens serão permanentemente removidos do sistema.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={handleConfirmDeleteOrder}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition-all duration-200"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Sim, Excluir
+              </Button>
+              <Button
+                onClick={cancelDeleteOrder}
+                variant="outline"
+                className="flex-1 border-border text-foreground hover:bg-muted font-semibold py-2 rounded-lg transition-all duration-200"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminPage;

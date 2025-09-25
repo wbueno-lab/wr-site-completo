@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de CSP - WR Capacetes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔒 Teste de Content Security Policy</h1>
+    <p>Este arquivo testa se as correções de CSP estão funcionando corretamente.</p>
+    
+    <button onclick="testConnectivity()">🧪 Testar Conectividade</button>
+    <button onclick="clearResults()">🗑️ Limpar Resultados</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(message, type = 'loading') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()} - ${message}`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testConnectivity() {
+            clearResults();
+            addResult('🚀 Iniciando testes de conectividade...', 'loading');
+
+            const tests = [
+                { url: 'https://httpbin.org/get', name: 'HTTPBin' },
+                { url: 'https://google.com', name: 'Google' },
+                { url: 'https://github.com', name: 'GitHub' },
+                { url: 'https://dns.google/resolve?name=google.com&type=A', name: 'DNS Google' }
+            ];
+
+            for (const test of tests) {
+                try {
+                    addResult(`🔄 Testando ${test.name}...`, 'loading');
+                    
+                    const response = await fetch(test.url, {
+                        method: 'HEAD',
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
+
+                    if (response.ok || response.status === 405) {
+                        addResult(`✅ ${test.name} - OK (Status: ${response.status})`, 'success');
+                    } else {
+                        addResult(`⚠️ ${test.name} - Resposta: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    if (error.message.includes('Failed to fetch')) {
+                        addResult(`❌ ${test.name} - Bloqueado pelo CSP: ${error.message}`, 'error');
+                    } else {
+                        addResult(`❌ ${test.name} - Erro: ${error.message}`, 'error');
+                    }
+                }
+            }
+
+            addResult('🏁 Testes concluídos!', 'success');
+        }
+
+        // Teste automático ao carregar a página
+        window.addEventListener('load', () => {
+            addResult('📄 Página carregada. Clique em "Testar Conectividade" para iniciar.', 'loading');
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* WR CAPACETES Design System - Modern E-commerce Theme */
+
+@layer base {
+  :root {
+    /* Core Brand Colors - WR CAPACETES */
+    --background: 220 15% 6%;
+    --foreground: 0 0% 95%;
+
+    /* Brand Green - Deep Professional Green */
+    --primary: 120 100% 10%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 120 100% 8%;
+
+    /* Accent Green - Neon Highlights */
+    --accent-neon: 120 100% 50%;
+    --accent-neon-glow: 120 100% 70%;
+
+    /* Dark Theme - Pure Black Base */
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Card & Surface Colors */
+    --card: 220 15% 8%;
+    --card-foreground: 0 0% 95%;
+    --card-hover: 220 15% 12%;
+
+    /* Interactive Elements */
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 5% 60%;
+
+    --accent: 120 30% 20%;
+    --accent-foreground: 120 100% 70%;
+
+    /* Status Colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 120 60% 40%;
+    --success-foreground: 0 0% 98%;
+
+    /* Borders & Inputs */
+    --border: 220 15% 20%;
+    --input: 220 15% 15%;
+    --ring: 120 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(120, 100%, 10%) 0%, hsl(220, 15%, 6%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(220, 15%, 8%) 0%, hsl(220, 15%, 12%) 100%);
+    --gradient-neon: linear-gradient(90deg, hsl(120, 100%, 50%) 0%, hsl(120, 100%, 70%) 100%);
+
+    /* Shadows */
+    --shadow-card: 0 4px 20px hsla(0, 0%, 0%, 0.3);
+    --shadow-hover: 0 8px 30px hsla(0, 0%, 0%, 0.4);
+    --shadow-neon: 0 0 20px hsla(120, 100%, 50%, 0.3);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    --background: 220 15% 6%;
+    --foreground: 0 0% 95%;
+
+    --card: 220 15% 8%;
+    --card-foreground: 0 0% 95%;
+    --card-hover: 220 15% 12%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 5% 60%;
+
+    --accent: 120 30% 20%;
+    --accent-foreground: 120 100% 70%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 15%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(120, 100%, 10%) 0%, hsl(220, 15%, 6%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(220, 15%, 8%) 0%, hsl(220, 15%, 12%) 100%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl md:text-6xl lg:text-7xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+}
+
+@layer components {
+  /* Hero Text Gradient */
+  .text-gradient-hero {
+    @apply bg-gradient-to-r from-white via-accent-neon to-accent-neon bg-clip-text text-transparent;
+    filter: drop-shadow(0 0 10px hsl(var(--accent-neon) / 0.5));
+  }
+
+  /* Neon Glow Effect */
+  .glow-neon {
+    box-shadow: 0 0 20px hsl(var(--accent-neon) / 0.3), 
+                0 0 40px hsl(var(--accent-neon) / 0.2);
+  }
+
+  /* Card Hover Animation */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:scale-105;
+  }
+
+  /* Animated Border */
+  .border-animated {
+    position: relative;
+    background: linear-gradient(var(--gradient-card));
+  }
+
+  .border-animated::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 2px;
+    background: var(--gradient-neon);
+    border-radius: inherit;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    opacity: 0;
+    transition: var(--transition-smooth);
+    pointer-events: none;
+  }
+
+  .border-animated:hover::before {
+    opacity: 1;
+  }
+
+  /* Animation Delays */
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+
+  .animation-delay-1000 {
+    animation-delay: 1000ms;
+  }
+
+  /* Enhanced Drop Shadow */
+  .drop-shadow-2xl {
+    filter: drop-shadow(0 25px 25px rgb(0 0 0 / 0.15));
+  }
+
+  /* Neon Glow Animation */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Backdrop Blur Support */
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+  }
+
+  /* Enhanced Button Hover Effects */
+  .hover\:shadow-neon:hover {
+    box-shadow: 0 0 20px hsl(var(--accent-neon) / 0.4), 
+                0 0 40px hsl(var(--accent-neon) / 0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
