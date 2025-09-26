@@ -1,70 +1,32 @@
-# Arquivos de desenvolvimento
+# Arquivos e pastas a serem ignorados no deploy do Vercel
 node_modules
+.git
 .env.local
-.env.development
-.env.test
-
-# Arquivos de build local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode
+.idea
+*.log
+coverage
+.nyc_output
+.cache
 dist
 build
-
-# Arquivos de backup e temporários
-*.backup
-*.tmp
-*.log
-*.bat
-*.ps1
-
-# Arquivos de documentação local
-*.md
-!README.md
-
-# Arquivos de teste
-test-*.html
-test-*.js
-debug-*.js
-check-*.js
-fix-*.js
-apply-*.js
-update-*.js
-
-# Arquivos de configuração local
-supabase_direct_test.sql
-supabase_schema.sql
-
-# Arquivos de backup
-backup-*.bat
-fazer-backup.*
-listar-backups.bat
-restaurar-backup.bat
-ver-backups.bat
-
-# Arquivos de correção
-CORRECOES_*.md
-SOLUCAO_*.md
-MELHORIAS_*.md
-REALTIME_*.md
-SISTEMA_*.md
-CONTRIBUTING.md
-BACKUP_INFO.md
-
-# Arquivos de configuração específicos do desenvolvimento
-cspell.json
-console-test.html
-test_csp_fix.html
-test-auth-*.html
-test-console-*.html
-test-timeout-*.html
-test-profile-*.html
-test-supabase-*.html
-test-connectivity-*.html
-test-alternative-*.html
-browser_console_test.js
-
-# Arquivos de configuração do Supabase local
-supabase/
-!supabase/functions/
-!supabase/migrations/
-
-# Arquivos de configuração do Vercel
-.vercel
+.next
+.nuxt
+.vuepress/dist
+.serverless
+.fusebox
+.dynamodb
+.tern-port
+.vscode-test
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
