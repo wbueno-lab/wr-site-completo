@@ -1,8 +1,5 @@
 # Redirects para SPA (Single Page Application)
 # Todas as rotas que não são arquivos estáticos devem redirecionar para index.html
 
-# Assets estáticos - NÃO redirecionar arquivos JS/CSS/Assets
-/assets/* /assets/:splat 200
-
-# Todas as outras rotas para index.html (SPA)
+# Todas as rotas para index.html (SPA)
 /* /index.html 200

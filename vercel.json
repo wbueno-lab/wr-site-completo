@@ -1,62 +1,6 @@
 {
   "version": 2,
-  "headers": [
-    {
-      "source": "/assets/(.*\\.js)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.js)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
-    }
-  ],
   "routes": [
-    {
-      "src": "/admin",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/contato",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/catalogo",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/promocoes",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/favoritos",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/pedidos",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/auth",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/produto/(.*)",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/checkout/(.*)",
-      "dest": "/index.html"
-    },
     {
       "src": "/(.*)",
       "dest": "/index.html"
