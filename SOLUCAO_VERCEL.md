@@ -1,3 +1,4 @@
+
 # Solução para Problemas de Deploy no Vercel
 
 ## Problemas Identificados e Corrigidos
