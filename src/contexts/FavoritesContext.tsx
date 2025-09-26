@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './UnifiedAuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase, waitForSupabase } from '@/integrations/supabase/client';
 
 interface Favorite {
   id: string;
@@ -58,19 +59,71 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
     return user ? `favorites_${user.id}` : `favorites_${getSessionId()}`;
   };
 
-  // Load favorites from localStorage
-  const loadFavorites = () => {
+  // Load favorites from localStorage and fetch product data
+  const loadFavorites = async () => {
     setIsLoading(true);
     try {
       const favoritesKey = getFavoritesKey();
       const storedFavorites = localStorage.getItem(favoritesKey);
       const favoritesList = storedFavorites ? JSON.parse(storedFavorites) : [];
-      setFavorites(favoritesList);
+      
+      if (favoritesList.length > 0) {
+        // Buscar dados dos produtos favoritos no banco
+        await loadProductsData(favoritesList);
+      } else {
+        setFavorites([]);
+      }
     } catch (error) {
       console.error('Error loading favorites:', error);
       setFavorites([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Load product data for favorites
+  const loadProductsData = async (favoritesList: Favorite[]) => {
+    try {
+      await waitForSupabase();
+      
+      const productIds = favoritesList.map(fav => fav.product_id);
+      
+      const { data: products, error } = await supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          price,
+          original_price,
+          image_url,
+          is_new,
+          is_promo,
+          categories (
+            name
+          )
+        `)
+        .in('id', productIds)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching products data:', error);
+        setFavorites(favoritesList); // Manter favoritos mesmo sem dados dos produtos
+        return;
+      }
+
+      // Combinar dados dos favoritos com dados dos produtos
+      const favoritesWithProducts = favoritesList.map(favorite => {
+        const product = products?.find(p => p.id === favorite.product_id);
+        return {
+          ...favorite,
+          product: product || null
+        };
+      }).filter(fav => fav.product !== null); // Remover favoritos de produtos que não existem mais
+
+      setFavorites(favoritesWithProducts);
+    } catch (error) {
+      console.error('Error loading products data:', error);
+      setFavorites(favoritesList); // Manter favoritos mesmo com erro
     }
   };
 
@@ -90,9 +143,34 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
   const addToFavorites = async (productId: string) => {
     try {
+      // Buscar dados do produto
+      await waitForSupabase();
+      const { data: product, error } = await supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          price,
+          original_price,
+          image_url,
+          is_new,
+          is_promo,
+          categories (
+            name
+          )
+        `)
+        .eq('id', productId)
+        .eq('is_active', true)
+        .single();
+
+      if (error) {
+        throw new Error('Produto não encontrado');
+      }
+
       const newFavorite: Favorite = {
         id: `fav_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        product_id: productId
+        product_id: productId,
+        product: product
       };
 
       const updatedFavorites = [...favorites, newFavorite];

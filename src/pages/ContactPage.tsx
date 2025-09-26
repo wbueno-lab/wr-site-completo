@@ -289,9 +289,9 @@ const ContactPage = () => {
                   <div>
                     <h3 className="font-semibold mb-1 text-white">Endereço</h3>
                     <p className="text-white/70">
-                      Rua das Motos, 123<br />
-                      Centro - São Paulo, SP<br />
-                      CEP: 01234-567
+                      Avenida Independência 1878 qd e lt 4/A<br />
+                      Av. Independência - St. Leste Vila Nova<br />
+                      Goiânia - GO, 74645-010
                     </p>
                   </div>
                 </div>
@@ -303,8 +303,7 @@ const ContactPage = () => {
                   <div>
                     <h3 className="font-semibold mb-1 text-white">Telefone</h3>
                     <p className="text-white/70">
-                      (11) 99999-9999<br />
-                      (11) 3333-4444
+                      (62) 99515-2200
                     </p>
                   </div>
                 </div>
@@ -316,8 +315,7 @@ const ContactPage = () => {
                   <div>
                     <h3 className="font-semibold mb-1 text-white">Email</h3>
                     <p className="text-white/70">
-                      contato@wrcapacetes.com.br<br />
-                      vendas@wrcapacetes.com.br
+                      wrcapmotos2020@gmail.com
                     </p>
                   </div>
                 </div>
@@ -330,7 +328,7 @@ const ContactPage = () => {
                     <h3 className="font-semibold mb-1 text-white">Horário de Funcionamento</h3>
                     <p className="text-white/70">
                       Segunda a Sexta: 8h às 18h<br />
-                      Sábado: 8h às 12h<br />
+                      Sábado: 8h às 13h<br />
                       Domingo: Fechado
                     </p>
                   </div>
