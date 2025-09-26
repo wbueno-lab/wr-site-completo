@@ -5,6 +5,8 @@ import ProductCard from "@/components/ProductCard";
 import SimpleProductCard from "@/components/SimpleProductCard";
 import ForceQualityProductCard from "@/components/ForceQualityProductCard";
 import BrandFilter from "@/components/BrandFilter";
+import HelmetTypeFilter from "@/components/HelmetTypeFilter";
+import HelmetSizeFilter from "@/components/HelmetSizeFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +28,8 @@ interface Product {
   is_promo: boolean;
   brand_id?: string;
   helmet_numbers?: number[];
+  helmet_type?: string;
+  shell_sizes?: string[];
   categories?: {
     name: string;
   };
@@ -68,6 +72,8 @@ const CatalogPage = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "all");
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedHelmetTypes, setSelectedHelmetTypes] = useState<string[]>([]);
+  const [selectedHelmetSizes, setSelectedHelmetSizes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("name");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState([0, 1000]);
@@ -135,6 +141,38 @@ const CatalogPage = () => {
       filtered = filtered.filter(product => product.is_promo);
     }
 
+    // Apply helmet type filter
+    if (selectedHelmetTypes.length > 0) {
+      filtered = filtered.filter(product => {
+        if (!product.helmet_type) return false;
+        // Mapear tipos do banco para os IDs dos filtros
+        const typeMapping: Record<string, string[]> = {
+          'fechado': ['integral', 'fechado', 'full-face'],
+          'articulado': ['modular', 'articulado', 'flip-up'],
+          'viseira_solar': ['viseira solar', 'sun visor', 'solar'],
+          'aberto': ['aberto', 'jet', 'open-face'],
+          'off_road': ['off-road', 'motocross', 'trilha', 'enduro']
+        };
+        
+        return selectedHelmetTypes.some(selectedType => {
+          const mappedTypes = typeMapping[selectedType] || [selectedType];
+          return mappedTypes.some(mappedType => 
+            product.helmet_type!.toLowerCase().includes(mappedType.toLowerCase())
+          );
+        });
+      });
+    }
+
+    // Apply helmet size filter
+    if (selectedHelmetSizes.length > 0) {
+      filtered = filtered.filter(product => {
+        if (!product.shell_sizes || !Array.isArray(product.shell_sizes)) return false;
+        return selectedHelmetSizes.some(selectedSize => 
+          product.shell_sizes!.includes(selectedSize)
+        );
+      });
+    }
+
     // Apply sorting
     switch (sortBy) {
       case "price_asc":
@@ -150,7 +188,7 @@ const CatalogPage = () => {
     }
 
     return filtered;
-  }, [allProducts, selectedCategory, selectedBrands, searchQuery, priceRange, showNewOnly, showPromoOnly, sortBy]);
+  }, [allProducts, selectedCategory, selectedBrands, selectedHelmetTypes, selectedHelmetSizes, searchQuery, priceRange, showNewOnly, showPromoOnly, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,6 +208,57 @@ const CatalogPage = () => {
           <p className="text-muted-foreground">
             Explore nossa linha completa de capacetes premium
           </p>
+        </div>
+
+        {/* Helmet Type Filters */}
+        <div className="mb-6">
+          <HelmetTypeFilter
+            selectedTypes={selectedHelmetTypes}
+            onTypeChange={setSelectedHelmetTypes}
+            productCounts={(() => {
+              const counts: Record<string, number> = {};
+              const typeMapping: Record<string, string[]> = {
+                'fechado': ['integral', 'fechado', 'full-face'],
+                'articulado': ['modular', 'articulado', 'flip-up'],
+                'viseira_solar': ['viseira solar', 'sun visor', 'solar'],
+                'aberto': ['aberto', 'jet', 'open-face'],
+                'off_road': ['off-road', 'motocross', 'trilha', 'enduro']
+              };
+              
+              Object.keys(typeMapping).forEach(filterType => {
+                counts[filterType] = allProducts.filter(product => {
+                  if (!product.helmet_type) return false;
+                  const mappedTypes = typeMapping[filterType];
+                  return mappedTypes.some(mappedType => 
+                    product.helmet_type!.toLowerCase().includes(mappedType.toLowerCase())
+                  );
+                }).length;
+              });
+              
+              return counts;
+            })()}
+          />
+        </div>
+
+        {/* Helmet Size Filters */}
+        <div className="mb-6">
+          <HelmetSizeFilter
+            selectedSizes={selectedHelmetSizes}
+            onSizeChange={setSelectedHelmetSizes}
+            productCounts={(() => {
+              const counts: Record<string, number> = {};
+              const sizes = ["54", "56", "58", "60", "62", "64"];
+              
+              sizes.forEach(size => {
+                counts[size] = allProducts.filter(product => 
+                  product.shell_sizes && Array.isArray(product.shell_sizes) && 
+                  product.shell_sizes.includes(size)
+                ).length;
+              });
+              
+              return counts;
+            })()}
+          />
         </div>
 
 
@@ -313,6 +402,8 @@ const CatalogPage = () => {
                         setSearchQuery("");
                         setSelectedCategory("all");
                         setSelectedBrands([]);
+                        setSelectedHelmetTypes([]);
+                        setSelectedHelmetSizes([]);
                         setPriceRange([0, maxPrice]);
                         setShowNewOnly(false);
                         setShowPromoOnly(false);
@@ -401,6 +492,8 @@ const CatalogPage = () => {
                   setSearchQuery("");
                   setSelectedCategory("all");
                   setSelectedBrands([]);
+                  setSelectedHelmetTypes([]);
+                  setSelectedHelmetSizes([]);
                   setSortBy("name");
                 }}>
                   Limpar Filtros
