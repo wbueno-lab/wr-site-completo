@@ -23,9 +23,14 @@ const BrandsContent = () => {
   const { brands, isLoading } = useRealtime();
   const navigate = useNavigate();
 
-  // Usar marcas do banco de dados, excluindo AXXIS
+  // Usar marcas do banco de dados, filtrando apenas marcas de capacetes
   const featuredBrands = brands
-    .filter(brand => brand.is_active !== false && brand.name.toUpperCase() !== 'AXXIS')
+    .filter((brand: any) => 
+      brand.is_active !== false && 
+      (brand.product_types?.includes('capacetes') || 
+       // Fallback para marcas antigas sem product_types definido
+       !['Alpinestars', 'X11'].includes(brand.name)) // Excluir apenas marcas exclusivamente de jaquetas
+    )
     .slice(0, 8);
 
   // Função para navegar para o catálogo com filtro de marca

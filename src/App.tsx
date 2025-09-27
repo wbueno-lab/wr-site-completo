@@ -8,6 +8,8 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import CatalogPage from "./pages/CatalogPage";
+import VestuarioPage from "./pages/VestuarioPage";
+import JaquetasPage from "./pages/JaquetasPage";
 import PromotionsPage from "./pages/PromotionsPage";
 import ContactPage from "./pages/ContactPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
@@ -54,6 +56,8 @@ const App = () => {
                         <Route path="/" element={<Index />} />
                         <Route path="/auth" element={<AuthPage />} />
                         <Route path="/catalogo" element={<CatalogPage />} />
+                        <Route path="/vestuario" element={<VestuarioPage />} />
+                        <Route path="/jaquetas" element={<JaquetasPage />} />
                         <Route path="/produto/:id" element={<ProductDetailPage />} />
                         <Route path="/promocoes" element={<PromotionsPage /> as RouteProps['element']} />
                         <Route path="/favoritos" element={<FavoritesPage />} />

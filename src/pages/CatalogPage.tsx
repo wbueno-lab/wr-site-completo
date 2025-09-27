@@ -4,7 +4,7 @@ import { HeaderWrapper } from "@/components/HeaderWrapper";
 import ProductCard from "@/components/ProductCard";
 import SimpleProductCard from "@/components/SimpleProductCard";
 import ForceQualityProductCard from "@/components/ForceQualityProductCard";
-import BrandFilter from "@/components/BrandFilter";
+import HelmetBrandFilter from "@/components/HelmetBrandFilter";
 import HelmetTypeFilter from "@/components/HelmetTypeFilter";
 import HelmetSizeFilter from "@/components/HelmetSizeFilter";
 import { Button } from "@/components/ui/button";
@@ -424,7 +424,7 @@ const CatalogPage = () => {
           {/* Sidebar com filtros */}
           <div className="w-full lg:w-80 space-y-6">
             {/* Filtro por Marcas */}
-            <BrandFilter
+            <HelmetBrandFilter
               brands={brands}
               selectedBrands={selectedBrands}
               onBrandChange={setSelectedBrands}

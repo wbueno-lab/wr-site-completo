@@ -5,10 +5,10 @@ import { useAdminPermissionsRobust as useAdminPermissions } from '@/hooks/useAdm
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Package, ShoppingBag, MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react';
+import { TrendingUp, Package, ShoppingBag, MessageSquare, AlertTriangle, RefreshCw, ShieldCheck, Shirt } from 'lucide-react';
 
 // Componentes específicos do admin
-import { AdminDashboard, ProductManager, OrderManager, MessageManager } from '@/components/admin';
+import { AdminDashboard, ProductManager, OrderManager, MessageManager, JaquetasManager, VestuarioManager } from '@/components/admin';
 
 const AdminPage = () => {
   const { user, profile } = useAuth();
@@ -195,12 +195,12 @@ const AdminPage = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Sistema de abas */}
-        <div className="mb-8 bg-brand-dark-light shadow-lg rounded-xl p-1 w-full max-w-4xl">
-          <div className="flex gap-1">
+        <div className="mb-8 bg-brand-dark-light shadow-lg rounded-xl p-1 w-full max-w-6xl">
+          <div className="flex gap-1 flex-wrap">
             <Button
               onClick={() => setActiveTab('dashboard')}
               variant={activeTab === 'dashboard' ? 'default' : 'ghost'}
-              className={`flex-1 ${
+              className={`flex-1 min-w-[120px] ${
                 activeTab === 'dashboard' 
                   ? 'bg-gradient-to-r from-brand-green to-brand-green-dark text-white' 
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
@@ -214,7 +214,7 @@ const AdminPage = () => {
             <Button
               onClick={() => setActiveTab('products')}
               variant={activeTab === 'products' ? 'default' : 'ghost'}
-              className={`flex-1 ${
+              className={`flex-1 min-w-[120px] ${
                 activeTab === 'products' 
                   ? 'bg-gradient-to-r from-brand-green to-brand-green-dark text-white' 
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
@@ -222,13 +222,41 @@ const AdminPage = () => {
             >
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
-                <span className="hidden sm:inline">Produtos</span>
+                <span className="hidden sm:inline">Capacetes</span>
+              </div>
+            </Button>
+            <Button
+              onClick={() => setActiveTab('jaquetas')}
+              variant={activeTab === 'jaquetas' ? 'default' : 'ghost'}
+              className={`flex-1 min-w-[120px] ${
+                activeTab === 'jaquetas' 
+                  ? 'bg-gradient-to-r from-brand-green to-brand-green-dark text-white' 
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="hidden sm:inline">Jaquetas</span>
+              </div>
+            </Button>
+            <Button
+              onClick={() => setActiveTab('vestuario')}
+              variant={activeTab === 'vestuario' ? 'default' : 'ghost'}
+              className={`flex-1 min-w-[120px] ${
+                activeTab === 'vestuario' 
+                  ? 'bg-gradient-to-r from-brand-green to-brand-green-dark text-white' 
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Shirt className="h-4 w-4" />
+                <span className="hidden sm:inline">Vestuário</span>
               </div>
             </Button>
             <Button
               onClick={() => setActiveTab('orders')}
               variant={activeTab === 'orders' ? 'default' : 'ghost'}
-              className={`flex-1 ${
+              className={`flex-1 min-w-[120px] ${
                 activeTab === 'orders' 
                   ? 'bg-gradient-to-r from-brand-green to-brand-green-dark text-white' 
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
@@ -242,7 +270,7 @@ const AdminPage = () => {
             <Button
               onClick={() => setActiveTab('messages')}
               variant={activeTab === 'messages' ? 'default' : 'ghost'}
-              className={`flex-1 ${
+              className={`flex-1 min-w-[120px] ${
                 activeTab === 'messages' 
                   ? 'bg-gradient-to-r from-brand-green to-brand-green-dark text-white' 
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
@@ -270,6 +298,24 @@ const AdminPage = () => {
 
         {activeTab === 'products' && (
           <ProductManager 
+            products={products}
+            categories={categories}
+            brands={brands}
+            toast={toast}
+          />
+        )}
+
+        {activeTab === 'jaquetas' && (
+          <JaquetasManager 
+            products={products}
+            categories={categories}
+            brands={brands}
+            toast={toast}
+          />
+        )}
+
+        {activeTab === 'vestuario' && (
+          <VestuarioManager 
             products={products}
             categories={categories}
             brands={brands}

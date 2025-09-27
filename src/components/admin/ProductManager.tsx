@@ -26,6 +26,13 @@ interface ProductManagerProps {
 
 const ProductManager = ({ products, categories, brands, toast }: ProductManagerProps) => {
   const [isCreating, setIsCreating] = useState(false);
+
+  // Filtrar marcas que fazem capacetes
+  const helmetBrands = brands?.filter(brand => 
+    brand.product_types?.includes('capacetes') || 
+    // Fallback para marcas antigas sem product_types definido
+    !['Alpinestars', 'Texx', 'X11'].includes(brand.name)
+  ) || [];
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -523,7 +530,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
               </DialogHeader>
               <ProductForm 
                 categories={categories || []}
-                brands={brands || []}
+                brands={helmetBrands || []}
                 onSubmit={handleCreateProduct}
               />
             </DialogContent>
@@ -765,7 +772,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
             </DialogHeader>
             <ProductForm 
               categories={categories || []}
-              brands={brands || []}
+              brands={helmetBrands || []}
               initialData={editingProduct}
               onSubmit={handleUpdateProduct}
               onCancel={() => {

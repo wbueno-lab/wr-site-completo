@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, ShoppingCart, User, Menu, X, LogOut, UserCircle, Package, Settings, Shield, Heart, Wifi } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, X, LogOut, UserCircle, Package, Settings, Shield, Heart, Wifi, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,7 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background shadow-sm backdrop-blur-sm">
       <div className="container flex h-16 items-center">
         {/* Logo */}
         <div className="flex items-center space-x-4">
@@ -49,7 +49,90 @@ const Header = () => {
             Home
           </Link>
           <Link to="/catalogo" className="text-sm font-medium transition-colors hover:text-accent-neon">
-            Catálogo
+            Capacetes
+          </Link>
+          
+          {/* Vestuário Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="text-sm font-medium transition-colors hover:text-accent-neon p-0 h-auto">
+                <span className="flex items-center gap-1">
+                  Vestuário
+                  <ChevronDown className="h-3 w-3" />
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align="start" 
+              className="w-80 p-4 bg-background border border-border shadow-lg rounded-lg backdrop-blur-sm"
+              sideOffset={4}
+            >
+              <div className="grid grid-cols-2 gap-6">
+                {/* Coluna 1 */}
+                <div className="space-y-1">
+                  <Link 
+                    to="/vestuario?category=luvas" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Luvas
+                  </Link>
+                  <Link 
+                    to="/vestuario?category=calças" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Calças
+                  </Link>
+                  <Link 
+                    to="/vestuario?category=macacão" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Macacão
+                  </Link>
+                  <Link 
+                    to="/vestuario?category=botas" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Botas
+                  </Link>
+                </div>
+                
+                {/* Coluna 2 */}
+                <div className="space-y-1">
+                  <Link 
+                    to="/vestuario?category=balaclava" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Balaclava
+                  </Link>
+                  <Link 
+                    to="/vestuario?category=segunda-pele" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Segunda Pele
+                  </Link>
+                  <Link 
+                    to="/vestuario?category=capa-de-chuva" 
+                    className="block px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors font-medium"
+                  >
+                    Capa de Chuva
+                  </Link>
+                </div>
+              </div>
+              
+              {/* Separador e link para todos os produtos */}
+              <div className="border-t border-border/50 mt-4 pt-4">
+                <Link 
+                  to="/vestuario" 
+                  className="block px-3 py-2 text-sm font-semibold text-center text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors bg-muted/30"
+                >
+                  Ver Todos os Produtos de Vestuário
+                </Link>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Link to="/jaquetas" className="text-sm font-medium transition-colors hover:text-accent-neon">
+            Jaquetas
           </Link>
           <Link to="/promocoes" className="text-sm font-medium transition-colors hover:text-accent-neon">
             Promoções
@@ -71,7 +154,7 @@ const Header = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Buscar capacetes..."
+                placeholder="Buscar produtos..."
                 className="pl-10 w-64 bg-background/50 border-muted focus:bg-background transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -88,7 +171,11 @@ const Header = () => {
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden">
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-72 p-0 overflow-hidden bg-background border border-border shadow-lg rounded-lg backdrop-blur-sm"
+                  sideOffset={4}
+                >
                   {/* Header Section */}
                   <div className="bg-gradient-to-r from-primary to-accent-neon p-4 text-muted-foreground">
                     <div className="flex items-center space-x-3">
@@ -107,13 +194,13 @@ const Header = () => {
                   </div>
                   
                   {/* Menu Items */}
-                  <div className="py-2">
-                    <DropdownMenuItem className="px-4 py-3 hover:bg-accent/5 transition-colors">
+                  <div className="py-2 bg-background">
+                    <DropdownMenuItem className="px-4 py-3 hover:bg-accent hover:text-accent-foreground transition-colors">
                       <UserCircle className="mr-3 h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Meu Perfil</span>
                     </DropdownMenuItem>
                     
-                    <DropdownMenuItem asChild className="px-4 py-3 hover:bg-accent/5 transition-colors">
+                    <DropdownMenuItem asChild className="px-4 py-3 hover:bg-accent hover:text-accent-foreground transition-colors">
                       <Link to="/pedidos" className="flex items-center w-full">
                         <Package className="mr-3 h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Meus Pedidos</span>
@@ -121,7 +208,7 @@ const Header = () => {
                     </DropdownMenuItem>
                     
                     {profile?.is_admin && (
-                      <DropdownMenuItem asChild className="px-4 py-3 hover:bg-accent/5 transition-colors">
+                      <DropdownMenuItem asChild className="px-4 py-3 hover:bg-accent hover:text-accent-foreground transition-colors">
                         <Link to="/admin" className="flex items-center w-full">
                           <Shield className="mr-3 h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">Painel Admin</span>
@@ -132,13 +219,13 @@ const Header = () => {
                   </div>
                   
                   {/* Separator */}
-                  <div className="border-t border-border/50"></div>
+                  <div className="border-t border-border/50 bg-background"></div>
                   
                   {/* Logout */}
-                  <div className="py-2">
+                  <div className="py-2 bg-background">
                     <DropdownMenuItem 
                       onClick={signOut}
-                      className="px-4 py-3 text-destructive hover:bg-destructive/5 transition-colors"
+                      className="px-4 py-3 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
                     >
                       <LogOut className="mr-3 h-4 w-4" />
                       <span className="font-medium">Sair</span>
@@ -208,14 +295,48 @@ const Header = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur">
+        <div className="md:hidden border-t border-border bg-background shadow-lg backdrop-blur-sm">
           <div className="container py-4 space-y-4">
             <div className="flex flex-col space-y-3">
               <Link to="/" className="text-sm font-medium transition-colors hover:text-accent-neon">
                 Home
               </Link>
               <Link to="/catalogo" className="text-sm font-medium transition-colors hover:text-accent-neon">
-                Catálogo
+                Capacetes
+              </Link>
+              
+              {/* Vestuário Mobile Menu */}
+              <div className="space-y-2">
+                <Link to="/vestuario" className="text-sm font-medium transition-colors hover:text-accent-neon block">
+                  Vestuário
+                </Link>
+                <div className="pl-4 space-y-1 border-l-2 border-border">
+                  <Link to="/vestuario?category=luvas" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Luvas
+                  </Link>
+                  <Link to="/vestuario?category=calças" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Calças
+                  </Link>
+                  <Link to="/vestuario?category=macacão" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Macacão
+                  </Link>
+                  <Link to="/vestuario?category=botas" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Botas
+                  </Link>
+                  <Link to="/vestuario?category=balaclava" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Balaclava
+                  </Link>
+                  <Link to="/vestuario?category=segunda-pele" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Segunda Pele
+                  </Link>
+                  <Link to="/vestuario?category=capa-de-chuva" className="text-xs text-muted-foreground transition-colors hover:text-accent-neon block">
+                    Capa de Chuva
+                  </Link>
+                </div>
+              </div>
+              
+              <Link to="/jaquetas" className="text-sm font-medium transition-colors hover:text-accent-neon">
+                Jaquetas
               </Link>
               <Link to="/promocoes" className="text-sm font-medium transition-colors hover:text-accent-neon">
                 Promoções
@@ -233,7 +354,7 @@ const Header = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Buscar capacetes..."
+                placeholder="Buscar produtos..."
                 className="pl-10 bg-background/50 border-muted"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
