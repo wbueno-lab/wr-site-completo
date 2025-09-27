@@ -199,7 +199,7 @@ const MercadoPagoPixForm = ({
 
             {/* Código PIX */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Código PIX (Copiar e Colar)</label>
+              <span className="text-sm font-medium">Código PIX (Copiar e Colar)</span>
               <div className="flex gap-2">
                 <div className="flex-1 p-3 bg-muted rounded-lg font-mono text-xs break-all">
                   {pixCode}

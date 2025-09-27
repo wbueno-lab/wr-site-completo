@@ -260,8 +260,10 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
                     <Label htmlFor="comment">Comentário</Label>
                     <Textarea
                       id="comment"
+                      name="comment"
                       placeholder="Compartilhe sua experiência com este produto..."
                       value={newReview.comment}
+                      autoComplete="off"
                       onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
                       rows={4}
                     />

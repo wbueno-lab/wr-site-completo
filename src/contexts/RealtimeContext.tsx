@@ -65,8 +65,6 @@ const createTemporaryBrands = (products: Product[]): Brand[] => {
     { name: 'KYT', country_of_origin: 'Itália', founded_year: 2000 },
     { name: 'PEELS', country_of_origin: 'Itália', founded_year: 2010 },
     { name: 'ASX', country_of_origin: 'Itália', founded_year: 2005 },
-    // eslint-disable-next-line spellcheck/spell-checker
-    { name: 'AXXIS', country_of_origin: 'Itália', founded_year: 2008 }, // Marca de capacete
     { name: 'LS2', country_of_origin: 'Espanha', founded_year: 1990 },
     // eslint-disable-next-line spellcheck/spell-checker
     { name: 'NORISK', country_of_origin: 'Itália', founded_year: 2012 }, // Marca de capacete
@@ -285,12 +283,12 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
       try {
         // Usar o estado de autenticação do hook personalizado
         if (!isAuthenticated || !user) {
-          console.log('ℹ️ Usuário não autenticado, pulando carregamento de mensagens');
+          // Usuário não autenticado
           setContactMessages([]);
           return;
         }
         
-        console.log('👤 Usuário autenticado:', user.email);
+        // Usuário autenticado
 
         // Verificar perfil do usuário com timeout
         const profilePromise = supabase
@@ -315,32 +313,28 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
         }
         
         if (!profileData) {
-          console.log('ℹ️ Perfil não encontrado, pulando carregamento de mensagens');
+          // Perfil não encontrado
           setContactMessages([]);
           return;
         }
         
-        console.log('👤 Perfil do usuário:', profileData);
+        // Perfil do usuário carregado
 
         // Carregar mensagens apenas se for admin
         if (!profileData.is_admin) {
-          console.log('ℹ️ Usuário não é admin, pulando carregamento de mensagens');
+          // Usuário não é admin
           setContactMessages([]);
           return;
         }
         
-        console.log('📨 Carregando mensagens para usuário admin...');
+        // Carregando mensagens para usuário admin
         
         const { data: messages, error: messagesError } = await supabase
           .from('contact_messages')
           .select('*')
           .order('created_at', { ascending: false });
 
-        console.log('📨 Resposta da busca de mensagens:', {
-          quantidade: messages?.length || 0,
-          status: messagesError ? 'erro' : 'sucesso',
-          erro: messagesError?.message || null
-        });
+        // Resposta da busca de mensagens processada
 
         if (messagesError) {
           console.error('❌ Erro ao carregar mensagens:', {
@@ -352,20 +346,16 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
         }
 
         if (messages && messages.length > 0) {
-          console.log('✅ Mensagens carregadas com sucesso:', {
-            quantidade: messages.length,
-            primeira: messages[0],
-            ultima: messages[messages.length - 1]
-          });
+          // Mensagens carregadas com sucesso
           setContactMessages(messages);
         } else {
-          console.log('ℹ️ Nenhuma mensagem encontrada - estado normal para sistema sem mensagens');
+          // Nenhuma mensagem encontrada
           setContactMessages([]);
         }
       } catch (error) {
         // Verificar se é um erro de sessão ausente para não mostrar toast desnecessário
         if (error instanceof Error && error.message.includes('Auth session missing')) {
-          console.log('ℹ️ Sessão de autenticação ausente, pulando carregamento de mensagens');
+          // Sessão de autenticação ausente
           setContactMessages([]);
         } else {
           console.error('❌ Erro ao carregar mensagens:', error);
@@ -487,7 +477,7 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
           table,
           filter: table === 'orders' ? 'status=eq.pending' : undefined
         }, (payload) => {
-          console.log(`📥 Novo registro em ${table}:`, payload);
+          // Novo registro recebido
           updateFn(payload as RealtimePostgresChangesPayload<T>);
           setLastUpdate(new Date());
         })
@@ -496,7 +486,7 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
           schema: 'public', 
           table 
         }, (payload) => {
-          console.log(`🔄 Atualização em ${table}:`, payload);
+          // Registro atualizado
           updateFn(payload as RealtimePostgresChangesPayload<T>);
           setLastUpdate(new Date());
         })
@@ -505,7 +495,7 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
           schema: 'public', 
           table 
         }, (payload) => {
-          console.log(`❌ Exclusão em ${table}:`, payload);
+          // Registro excluído
           updateFn(payload as RealtimePostgresChangesPayload<T>);
           setLastUpdate(new Date());
         });
@@ -523,11 +513,7 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
       };
 
       const handleReconnect = async (force = false) => {
-        console.log('🔄 Debug - Estado do canal:', {
-          channelName,
-          state: currentChannel.state,
-          force
-        });
+        // Verificando estado do canal
         const channelState = currentChannel.state as ChannelState;
         if (!force && channelState === CHANNEL_STATES.SUBSCRIBED) {
           return; // Evita reconexão desnecessária
@@ -641,7 +627,7 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
 
       try {
         if (!isConnected) {
-          console.log('🔄 Realizando atualização via fallback...');
+          // Realizando atualização via fallback
           await loadInitialData();
           lastFallbackUpdate = now;
         }
@@ -730,10 +716,10 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
           console.log('➕ Nova mensagem recebida');
           return [payload.new, ...prev];
         } else if (payload.eventType === 'UPDATE') {
-          console.log('🔄 Mensagem atualizada');
+          // Mensagem atualizada
           return prev.map((m) => m.id === payload.new.id ? { ...m, ...payload.new } : m);
         } else if (payload.eventType === 'DELETE') {
-          console.log('❌ Mensagem excluída');
+          // Mensagem excluída
           return prev.filter((m) => m.id !== payload.old.id);
         }
         return prev;

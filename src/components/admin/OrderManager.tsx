@@ -282,9 +282,12 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  id="order-search"
+                  name="order-search"
                   placeholder="Cliente, email ou ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  autoComplete="off"
                   className="pl-10 border-gray-600 bg-brand-dark-lighter text-white"
                 />
               </div>
@@ -293,7 +296,7 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-400">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-gray-600 bg-brand-dark-lighter text-white">
+                <SelectTrigger id="status-filter" className="border-gray-600 bg-brand-dark-lighter text-white">
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -542,27 +545,27 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">Nome Completo</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">Nome Completo</span>
                         <p className="text-white text-lg font-semibold">{selectedOrder.customer_name || 'Não informado'}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">Email</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">Email</span>
                         <p className="text-white">{selectedOrder.customer_email || 'Não informado'}</p>
                       </div>
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">Telefone</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">Telefone</span>
                         <p className="text-white">{selectedOrder.customer_phone || 'Não informado'}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">CPF</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">CPF</span>
                         <p className="text-white">{(selectedOrder as any).customer_cpf || 'Não informado'}</p>
                       </div>
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">ID do Cliente</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">ID do Cliente</span>
                         <p className="text-white font-mono text-sm">{selectedOrder.user_id || 'Não informado'}</p>
                       </div>
                     </div>
@@ -582,21 +585,21 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">Data do Pedido</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">Data do Pedido</span>
                         <p className="text-white">{formatDate(selectedOrder.created_at)}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">ID Completo</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">ID Completo</span>
                         <p className="text-white font-mono text-sm">{selectedOrder.id}</p>
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-400 block mb-1">Método de Pagamento</label>
+                      <span className="text-sm font-medium text-gray-400 block mb-1">Método de Pagamento</span>
                       <p className="text-white text-lg font-semibold">{getPaymentMethodLabel(selectedOrder.payment_method)}</p>
                     </div>
                     {selectedOrder.payment_status && (
                       <div>
-                        <label className="text-sm font-medium text-gray-400 block mb-1">Status do Pagamento</label>
+                        <span className="text-sm font-medium text-gray-400 block mb-1">Status do Pagamento</span>
                         <Badge className={`px-3 py-1 ${selectedOrder.payment_status === 'paid' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'}`}>
                           {getPaymentStatusLabel(selectedOrder.payment_status)}
                         </Badge>
@@ -787,36 +790,36 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
                           <div>
-                            <label className="text-sm font-medium text-gray-400 block mb-1">Rua</label>
+                            <span className="text-sm font-medium text-gray-400 block mb-1">Rua</span>
                             <p className="text-white font-semibold">{(selectedOrder as any).shipping_address.street}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-400 block mb-1">Número</label>
+                            <span className="text-sm font-medium text-gray-400 block mb-1">Número</span>
                             <p className="text-white">{(selectedOrder as any).shipping_address.number}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-400 block mb-1">Bairro</label>
+                            <span className="text-sm font-medium text-gray-400 block mb-1">Bairro</span>
                             <p className="text-white">{(selectedOrder as any).shipping_address.neighborhood}</p>
                           </div>
                         </div>
                         <div className="space-y-3">
                           <div>
-                            <label className="text-sm font-medium text-gray-400 block mb-1">Cidade</label>
+                            <span className="text-sm font-medium text-gray-400 block mb-1">Cidade</span>
                             <p className="text-white font-semibold">{(selectedOrder as any).shipping_address.city}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-400 block mb-1">Estado</label>
+                            <span className="text-sm font-medium text-gray-400 block mb-1">Estado</span>
                             <p className="text-white">{(selectedOrder as any).shipping_address.state}</p>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-gray-400 block mb-1">CEP</label>
+                            <span className="text-sm font-medium text-gray-400 block mb-1">CEP</span>
                             <p className="text-white font-mono">{(selectedOrder as any).shipping_address.zip_code}</p>
                           </div>
                         </div>
                       </div>
                       {(selectedOrder as any).shipping_address.complement && (
                         <div className="mt-4 pt-4 border-t border-gray-600">
-                          <label className="text-sm font-medium text-gray-400 block mb-1">Complemento</label>
+                          <span className="text-sm font-medium text-gray-400 block mb-1">Complemento</span>
                           <p className="text-white">{(selectedOrder as any).shipping_address.complement}</p>
                         </div>
                       )}

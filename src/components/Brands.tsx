@@ -1,18 +1,37 @@
-import { Shield, Globe, Star, Award } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealtime } from "@/contexts/RealtimeContext";
+import { useNavigate } from "react-router-dom";
 
-const getIconComponent = (index: number) => {
-  const icons = [Shield, Globe, Star, Award];
-  return icons[index % icons.length];
+// Mapeamento dos ícones das marcas
+const getBrandIcon = (brandName: string) => {
+  const iconMap: Record<string, string> = {
+    'AGV': '/ICONE AGV.png',
+    'ASX': '/ICONE-ASX.png',
+    'BIEFFE': '/ICONE BIEFFE.png',
+    'FW3': '/ICONE FW3.png',
+    'KYT': '/ICONE-KYT.png',
+    'LS2': '/ICONE-LS2.png',
+    'NORISK': '/ICONE NORISK.png',
+    'PEELS': '/ICONE PEELS.png'
+  };
+  
+  return iconMap[brandName.toUpperCase()] || '/ICONE-LS2.png';
 };
 
 const BrandsContent = () => {
   const { brands, isLoading } = useRealtime();
+  const navigate = useNavigate();
 
-  // Usar marcas do banco de dados
-  const featuredBrands = brands.filter(brand => brand.is_active !== false).slice(0, 8);
+  // Usar marcas do banco de dados, excluindo AXXIS
+  const featuredBrands = brands
+    .filter(brand => brand.is_active !== false && brand.name.toUpperCase() !== 'AXXIS')
+    .slice(0, 8);
+
+  // Função para navegar para o catálogo com filtro de marca
+  const handleBrandClick = (brandId: string, brandName: string) => {
+    navigate(`/catalogo?marca=${brandId}&nome=${encodeURIComponent(brandName)}`);
+  };
 
   return (
     <section className="py-20 bg-background">
@@ -52,17 +71,30 @@ const BrandsContent = () => {
             ))
           ) : (
             featuredBrands.map((brand, index) => {
-              const IconComponent = getIconComponent(index);
+              const brandIconPath = getBrandIcon(brand.name);
               return (
                 <Card 
                   key={brand.id}
                   className="group cursor-pointer border-animated card-hover overflow-hidden"
                   style={{ animationDelay: `${index * 0.1}s` }}
+                  onClick={() => handleBrandClick(brand.id, brand.name)}
                 >
                   <CardContent className="p-6 text-center space-y-4">
-                    {/* Icon with Gradient Background */}
-                    <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-accent-neon/20 to-accent-neon/40 flex items-center justify-center text-accent-neon shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <IconComponent className="h-8 w-8" />
+                    {/* Brand Icon */}
+                    <div className={`mx-auto flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${
+                      brand.name.toUpperCase() === 'NORISK' ? 'w-20 h-20' : 'w-16 h-16'
+                    }`}>
+                      <img 
+                        src={brandIconPath}
+                        alt={`${brand.name} logo`}
+                        className={`object-contain ${
+                          brand.name.toUpperCase() === 'NORISK' ? 'w-20 h-20' : 'w-16 h-16'
+                        }`}
+                        onError={(e) => {
+                          // Fallback para um ícone padrão se a imagem não carregar
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     </div>
 
                     {/* Brand Info */}
@@ -70,16 +102,6 @@ const BrandsContent = () => {
                       <h3 className="text-lg font-bold group-hover:text-accent-neon transition-colors">
                         {brand.name}
                       </h3>
-                      {brand.country_of_origin && (
-                        <Badge variant="outline" className="text-xs">
-                          {brand.country_of_origin}
-                        </Badge>
-                      )}
-                      {brand.founded_year && (
-                        <p className="text-xs text-white/60">
-                          Desde {brand.founded_year}
-                        </p>
-                      )}
                     </div>
 
                     {/* Hover Effect */}

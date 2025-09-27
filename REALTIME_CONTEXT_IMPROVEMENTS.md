@@ -86,7 +86,7 @@ O contexto mantém subscrições ativas para:
 
 ### Marcas Temporárias
 Quando não é possível carregar marcas do banco, o sistema usa marcas temporárias pré-definidas:
-- AGV, BIEFFE, FW3, KYT, PEELS, ASX, AXXIS, LS2, NORISK, RACE TECH, TEXX
+- AGV, BIEFFE, FW3, KYT, PEELS, ASX, LS2, NORISK, RACE TECH, TEXX
 
 ### Tratamento de Erros por Entidade
 Cada tipo de dado tem tratamento específico de erro com toasts informativos.

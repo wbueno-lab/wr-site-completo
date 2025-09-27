@@ -5,12 +5,12 @@ import { Badge } from "@/components/ui/badge";
 interface HelmetSizeFilterProps {
   selectedSizes: string[];
   onSizeChange: (sizes: string[]) => void;
-  productCounts: Record<string, number>;
 }
 
 const helmetSizes = ["54", "56", "58", "60", "62", "64"];
 
-const HelmetSizeFilter = ({ selectedSizes, onSizeChange, productCounts }: HelmetSizeFilterProps) => {
+const HelmetSizeFilter = ({ selectedSizes, onSizeChange }: HelmetSizeFilterProps) => {
+
   const handleSizeToggle = (size: string) => {
     if (selectedSizes.includes(size)) {
       onSizeChange(selectedSizes.filter(s => s !== size));
@@ -23,6 +23,7 @@ const HelmetSizeFilter = ({ selectedSizes, onSizeChange, productCounts }: Helmet
     onSizeChange([]);
   };
 
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -32,26 +33,22 @@ const HelmetSizeFilter = ({ selectedSizes, onSizeChange, productCounts }: Helmet
         <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-7 gap-3">
           {helmetSizes.map((size) => {
             const isSelected = selectedSizes.includes(size);
-            const productCount = productCounts[size] || 0;
             
             return (
-              <Button
-                key={size}
-                variant={isSelected ? "default" : "outline"}
-                className={`h-16 flex flex-col items-center justify-center gap-1 transition-all duration-200 hover:scale-105 ${
-                  isSelected 
-                    ? "bg-primary text-primary-foreground shadow-lg" 
-                    : "bg-background hover:bg-muted"
-                }`}
-                onClick={() => handleSizeToggle(size)}
-              >
-                <div className="font-bold text-lg">{size}</div>
-                {productCount > 0 && (
-                  <Badge variant="secondary" className="text-xs px-1">
-                    {productCount}
-                  </Badge>
-                )}
-              </Button>
+              <div key={size} className="space-y-2">
+                <Button
+                  variant={isSelected ? "default" : "outline"}
+                  className={`h-16 flex flex-col items-center justify-center gap-1 transition-all duration-200 hover:scale-105 w-full ${
+                    isSelected 
+                      ? "bg-primary text-primary-foreground shadow-lg" 
+                      : "bg-background hover:bg-muted"
+                  }`}
+                  onClick={() => handleSizeToggle(size)}
+                >
+                  <div className="font-bold text-lg">{size}</div>
+                </Button>
+                
+              </div>
             );
           })}
           

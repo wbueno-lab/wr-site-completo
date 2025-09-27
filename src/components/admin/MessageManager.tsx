@@ -643,9 +643,12 @@ const MessageManager = ({ messages, toast }: MessageManagerProps) => {
               <div>
                 <Label className="text-sm font-medium text-gray-400">Sua Resposta</Label>
                 <Textarea
+                  id="reply-text"
+                  name="reply-text"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Digite sua resposta aqui..."
+                  autoComplete="off"
                   className="mt-2 min-h-[120px] border-gray-600 bg-brand-dark-lighter text-white"
                 />
               </div>

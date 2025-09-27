@@ -19,54 +19,26 @@ interface BrandFilterProps {
   selectedBrands: string[];
   onBrandChange: (brandIds: string[]) => void;
   isLoading?: boolean;
-  products?: any[]; // Para calcular contagem de produtos
 }
 
 const BrandFilter = ({ 
   brands, 
   selectedBrands, 
-  onBrandChange, 
-  isLoading = false,
-  products = []
+  onBrandChange,
+  isLoading = false
 }: BrandFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>(brands);
 
-  // Calcular contagem de produtos por marca
-  const getProductCount = (brandId: string) => {
-    // Se for uma marca temporária, simular contagem baseada no nome da marca
-    if (brandId.startsWith('temp-brand-')) {
-      const brand = brands.find(b => b.id === brandId);
-      if (brand) {
-        return products.filter(product => 
-          product.is_active && 
-          product.name.toLowerCase().includes(brand.name.toLowerCase())
-        ).length;
-      }
-    }
-    
-    // Para marcas reais, contar produtos que têm brand_id correspondente
-    // ou que contêm o nome da marca no nome do produto
-    const brand = brands.find(b => b.id === brandId);
-    if (!brand) return 0;
-    
-    return products.filter(product => {
-      if (!product.is_active) return false;
-      
-      // Se o produto tem brand_id, verificar se corresponde
-      if (product.brand_id === brandId) return true;
-      
-      // Se não tem brand_id, verificar se o nome contém o nome da marca
-      return product.name.toLowerCase().includes(brand.name.toLowerCase());
-    }).length;
-  };
 
-  // Filtrar marcas baseado na busca
+  // Filtrar marcas baseado na busca, excluindo AXXIS
   useEffect(() => {
+    const brandsWithoutAXXIS = brands.filter(brand => brand.name.toUpperCase() !== 'AXXIS');
+    
     if (!searchQuery.trim()) {
-      setFilteredBrands(brands);
+      setFilteredBrands(brandsWithoutAXXIS);
     } else {
-      const filtered = brands.filter(brand =>
+      const filtered = brandsWithoutAXXIS.filter(brand =>
         brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         brand.country_of_origin?.toLowerCase().includes(searchQuery.toLowerCase())
       );
@@ -126,9 +98,12 @@ const BrandFilter = ({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            id="brand-search"
+            name="brand-search"
             placeholder="Buscar marcas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
             className="pl-10"
           />
         </div>
@@ -183,19 +158,6 @@ const BrandFilter = ({
                   >
                     {brand.name}
                   </label>
-                  {brand.country_of_origin && (
-                    <p className="text-xs text-muted-foreground">
-                      {brand.country_of_origin}
-                    </p>
-                  )}
-                  {(() => {
-                    const count = getProductCount(brand.id);
-                    return count > 0 && (
-                      <p className="text-xs text-accent-neon">
-                        {count} produto{count !== 1 ? 's' : ''}
-                      </p>
-                    );
-                  })()}
                 </div>
               </div>
             ))

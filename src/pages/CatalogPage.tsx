@@ -26,10 +26,12 @@ interface Product {
   gallery_images?: string[];
   is_new: boolean;
   is_promo: boolean;
+  is_active?: boolean;
   brand_id?: string;
   helmet_numbers?: number[];
   helmet_type?: string;
   shell_sizes?: string[];
+  available_sizes?: number[];
   categories?: {
     name: string;
   };
@@ -81,6 +83,16 @@ const CatalogPage = () => {
   const [showPromoOnly, setShowPromoOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [maxPrice, setMaxPrice] = useState(1000);
+
+  // Processar parâmetros de URL para filtros automáticos
+  useEffect(() => {
+    const marcaParam = searchParams.get("marca");
+    const nomeParam = searchParams.get("nome");
+    
+    if (marcaParam) {
+      setSelectedBrands([marcaParam]);
+    }
+  }, [searchParams]);
 
   // Calculate max price from products
   useEffect(() => {
@@ -166,10 +178,14 @@ const CatalogPage = () => {
     // Apply helmet size filter
     if (selectedHelmetSizes.length > 0) {
       filtered = filtered.filter(product => {
-        if (!product.shell_sizes || !Array.isArray(product.shell_sizes)) return false;
-        return selectedHelmetSizes.some(selectedSize => 
-          product.shell_sizes!.includes(selectedSize)
-        );
+        // Verificar tanto shell_sizes (string[]) quanto available_sizes (number[])
+        const hasShellSizes = product.shell_sizes && Array.isArray(product.shell_sizes) && 
+          selectedHelmetSizes.some(selectedSize => product.shell_sizes!.includes(selectedSize));
+        
+        const hasAvailableSizes = product.available_sizes && Array.isArray(product.available_sizes) &&
+          selectedHelmetSizes.some(selectedSize => product.available_sizes!.includes(parseInt(selectedSize)));
+          
+        return hasShellSizes || hasAvailableSizes;
       });
     }
 
@@ -208,6 +224,23 @@ const CatalogPage = () => {
           <p className="text-muted-foreground">
             Explore nossa linha completa de capacetes premium
           </p>
+          
+          {/* Mensagem quando filtrado por marca */}
+          {selectedBrands.length > 0 && (
+            <div className="mt-4 p-4 bg-accent-neon/10 border border-accent-neon/30 rounded-lg">
+              <p className="text-accent-neon font-medium">
+                Mostrando produtos da marca: <span className="font-bold">
+                  {brands.find(b => b.id === selectedBrands[0])?.name || 'Marca selecionada'}
+                </span>
+              </p>
+              <button 
+                onClick={() => setSelectedBrands([])}
+                className="text-sm text-accent-neon/80 hover:text-accent-neon underline mt-1"
+              >
+                Ver todos os produtos
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Helmet Type Filters */}
@@ -215,28 +248,6 @@ const CatalogPage = () => {
           <HelmetTypeFilter
             selectedTypes={selectedHelmetTypes}
             onTypeChange={setSelectedHelmetTypes}
-            productCounts={(() => {
-              const counts: Record<string, number> = {};
-              const typeMapping: Record<string, string[]> = {
-                'fechado': ['integral', 'fechado', 'full-face'],
-                'articulado': ['modular', 'articulado', 'flip-up'],
-                'viseira_solar': ['viseira solar', 'sun visor', 'solar'],
-                'aberto': ['aberto', 'jet', 'open-face'],
-                'off_road': ['off-road', 'motocross', 'trilha', 'enduro']
-              };
-              
-              Object.keys(typeMapping).forEach(filterType => {
-                counts[filterType] = allProducts.filter(product => {
-                  if (!product.helmet_type) return false;
-                  const mappedTypes = typeMapping[filterType];
-                  return mappedTypes.some(mappedType => 
-                    product.helmet_type!.toLowerCase().includes(mappedType.toLowerCase())
-                  );
-                }).length;
-              });
-              
-              return counts;
-            })()}
           />
         </div>
 
@@ -245,19 +256,6 @@ const CatalogPage = () => {
           <HelmetSizeFilter
             selectedSizes={selectedHelmetSizes}
             onSizeChange={setSelectedHelmetSizes}
-            productCounts={(() => {
-              const counts: Record<string, number> = {};
-              const sizes = ["54", "56", "58", "60", "62", "64"];
-              
-              sizes.forEach(size => {
-                counts[size] = allProducts.filter(product => 
-                  product.shell_sizes && Array.isArray(product.shell_sizes) && 
-                  product.shell_sizes.includes(size)
-                ).length;
-              });
-              
-              return counts;
-            })()}
           />
         </div>
 
@@ -431,7 +429,6 @@ const CatalogPage = () => {
               selectedBrands={selectedBrands}
               onBrandChange={setSelectedBrands}
               isLoading={isLoading}
-              products={allProducts}
             />
           </div>
 

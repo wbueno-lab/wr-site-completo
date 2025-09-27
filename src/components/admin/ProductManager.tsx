@@ -60,7 +60,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     available_sizes: [] as number[],
     weight: '',
     material: '',
-    helmet_type: 'full_face',
+    helmet_type: 'fechado',
     helmet_numbers: [] as number[],
     color_options: [] as string[],
     warranty_period: '',
@@ -141,7 +141,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     setFormErrors(errors);
   };
 
-  // Calcular progresso do formulário - memoizado
+  // Calcular progresso do formulário - memorizado
   const calculateFormProgress = useCallback(() => {
     const requiredFields = ['name', 'price', 'category_id'];
     const optionalFields = ['description', 'image_url', 'brand_id', 'stock_quantity', 'weight', 'material', 'helmet_type'];
@@ -173,7 +173,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     return Math.round((requiredProgress + optionalProgress) * 100);
   }, [productForm]);
 
-  // Atualizar progresso quando o formulário muda - memoizado para evitar re-renderizações
+  // Atualizar progresso quando o formulário muda - memorizado para evitar re-renderizações
   const memoizedProgress = useMemo(() => {
     return calculateFormProgress();
   }, [calculateFormProgress]);
@@ -182,7 +182,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     setFormProgress(memoizedProgress);
   }, [memoizedProgress]);
 
-  // Handlers memoizados para evitar re-renderizações desnecessárias
+  // Handlers memorizados para evitar re-renderizações desnecessárias
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setProductForm(prev => ({ ...prev, name: value }));
@@ -222,7 +222,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     validateField('warranty_period', value);
   }, [validateField]);
 
-  // Handlers memoizados para Collapsible
+  // Handlers memorizados para Collapsible
   const handleBasicSectionToggle = useCallback((open: boolean) => {
     setOpenSections(prev => ({ ...prev, basic: open }));
   }, []);

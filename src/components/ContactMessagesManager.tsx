@@ -589,9 +589,11 @@ const ContactMessagesManager = () => {
                   <Label htmlFor="admin-notes">Adicionar ou editar notas</Label>
                   <Textarea
                     id="admin-notes"
+                    name="admin-notes"
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
                     placeholder="Adicione suas notas sobre esta mensagem..."
+                    autoComplete="off"
                     rows={4}
                   />
                 </div>

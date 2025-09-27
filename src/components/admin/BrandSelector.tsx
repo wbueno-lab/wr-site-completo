@@ -32,12 +32,16 @@ const BrandSelector = ({
   const [showAll, setShowAll] = useState(false);
 
 
-  // Filtrar marcas baseado na busca - memoizado para evitar re-cálculos desnecessários
+  // Filtrar marcas baseado na busca - memorizado para evitar re-cálculos desnecessários
   const filteredBrands = useMemo(() => {
     if (!brands || brands.length === 0) return [];
-    if (!searchTerm || searchTerm.trim() === '') return brands;
     
-    return brands.filter(brand => 
+    // Primeiro filtrar AXXIS, depois aplicar busca
+    const brandsWithoutAXXIS = brands.filter(brand => brand.name.toUpperCase() !== 'AXXIS');
+    
+    if (!searchTerm || searchTerm.trim() === '') return brandsWithoutAXXIS;
+    
+    return brandsWithoutAXXIS.filter(brand => 
       brand.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [brands, searchTerm]);

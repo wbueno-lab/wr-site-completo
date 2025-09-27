@@ -36,7 +36,7 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
     available_sizes: initialData?.available_sizes || [],
     weight: initialData?.weight?.toString() || '',
     material: initialData?.material || '',
-    helmet_type: initialData?.helmet_type || 'full_face',
+    helmet_type: initialData?.helmet_type || 'fechado',
     helmet_numbers: initialData?.helmet_numbers || [],
     color_options: initialData?.color_options || [],
     warranty_period: initialData?.warranty_period?.toString() || '',
@@ -140,9 +140,11 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
                 </Label>
                 <Input
                   id="name"
+                  name="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   required
+                  autoComplete="off"
                   className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white"
                   placeholder="Digite o nome do produto"
                 />
@@ -150,14 +152,14 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
 
               {/* Categoria */}
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-sm font-semibold text-white">
+                <Label htmlFor="category_id" className="text-sm font-semibold text-white">
                   Categoria *
                 </Label>
                 <Select 
                   value={formData.category_id || ""} 
                   onValueChange={(value) => handleInputChange('category_id', value)}
                 >
-                  <SelectTrigger className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white">
+                  <SelectTrigger id="category_id" className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
@@ -172,17 +174,17 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
 
               {/* Marca */}
               <div className="space-y-2">
-                <Label htmlFor="brand" className="text-sm font-semibold text-white">Marca</Label>
+                <Label htmlFor="brand_id" className="text-sm font-semibold text-white">Marca</Label>
                 <div className="flex gap-2">
                   <Select 
                     value={formData.brand_id || ""} 
                     onValueChange={(value) => handleInputChange('brand_id', value)}
                   >
-                    <SelectTrigger className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white flex-1">
+                    <SelectTrigger id="brand_id" className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white flex-1">
                       <SelectValue placeholder="Selecione uma marca (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {brands?.map((brand) => (
+                      {brands?.filter(brand => brand.name.toUpperCase() !== 'AXXIS').map((brand) => (
                         <SelectItem key={brand.id} value={brand.id}>
                           {brand.name}
                         </SelectItem>
@@ -203,6 +205,54 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
                 </div>
               </div>
 
+              {/* Tipo de Capacete */}
+              <div className="space-y-2">
+                <Label htmlFor="helmet_type" className="text-sm font-semibold text-white">
+                  Tipo de Capacete *
+                </Label>
+                <Select 
+                  value={formData.helmet_type || ""} 
+                  onValueChange={(value) => handleInputChange('helmet_type', value)}
+                >
+                  <SelectTrigger id="helmet_type" className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white">
+                    <SelectValue placeholder="Selecione o tipo de capacete" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fechado">
+                      <div className="flex items-center gap-2">
+                        <span>🏍️</span>
+                        <span>Fechado</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="articulado">
+                      <div className="flex items-center gap-2">
+                        <span>🔄</span>
+                        <span>Articulado</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="viseira_solar">
+                      <div className="flex items-center gap-2">
+                        <span>🕶️</span>
+                        <span>C/ Viseira Solar</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="aberto">
+                      <div className="flex items-center gap-2">
+                        <span>🪖</span>
+                        <span>Aberto</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="off_road">
+                      <div className="flex items-center gap-2">
+                        <span>🏔️</span>
+                        <span>Off-Road</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-400">Selecione o tipo/modelo do capacete</p>
+              </div>
+
               {/* Preço */}
               <div className="space-y-2">
                 <Label htmlFor="price" className="text-sm font-semibold text-white">
@@ -210,12 +260,14 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
                 </Label>
                 <Input
                   id="price"
+                  name="price"
                   type="number"
                   step="0.01"
                   min="0.01"
                   value={formData.price}
                   onChange={(e) => handleInputChange('price', e.target.value)}
                   required
+                  autoComplete="off"
                   className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white"
                   placeholder="0.00"
                 />
@@ -228,10 +280,12 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
                 </Label>
                 <Input
                   id="stock"
+                  name="stock_quantity"
                   type="number"
                   min="0"
                   value={formData.stock_quantity}
                   onChange={(e) => handleInputChange('stock_quantity', e.target.value)}
+                  autoComplete="off"
                   className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white"
                   placeholder="0"
                 />
@@ -242,11 +296,13 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
                 <Label htmlFor="original_price" className="text-sm font-semibold text-white">Preço Original</Label>
                 <Input
                   id="original_price"
+                  name="original_price"
                   type="number"
                   step="0.01"
                   min="0.01"
                   value={formData.original_price}
                   onChange={(e) => handleInputChange('original_price', e.target.value)}
+                  autoComplete="off"
                   className="h-12 border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white"
                   placeholder="0.00"
                 />
@@ -344,7 +400,7 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
                 </Label>
                 <div className="bg-brand-dark-lighter border-2 border-gray-600 rounded-xl p-4">
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                    {[54, 56, 58, 60, 62].map((size) => (
+                    {[54, 56, 58, 60, 62, 64].map((size) => (
                       <Button
                         key={size}
                         type="button"
@@ -388,8 +444,10 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
               <Label htmlFor="description" className="text-sm font-semibold text-white">Descrição</Label>
               <Textarea
                 id="description"
+                name="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
+                autoComplete="off"
                 className="min-h-[100px] border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white"
                 placeholder="Descreva o produto..."
               />
@@ -478,8 +536,10 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
               </Label>
               <Textarea
                 id="specifications"
+                name="specifications"
                 value={formData.specifications}
                 onChange={(e) => handleInputChange('specifications', e.target.value)}
+                autoComplete="off"
                 className="min-h-[120px] border-2 border-gray-600 focus:border-brand-green rounded-xl bg-brand-dark-lighter text-white"
                 placeholder="Digite as especificações técnicas do produto...
 

@@ -22,6 +22,7 @@ interface CartContextType {
   isLoading: boolean;
   addToCart: (productId: string, quantity?: number, selectedSize?: number) => Promise<void>;
   addMultipleToCart: (productId: string, quantity: number, selectedSizes: number[]) => Promise<void>;
+  addMultipleProductsToCart: (productIds: string[], quantity?: number) => Promise<void>;
   updateQuantity: (productId: string, quantity: number, selectedSize?: number) => Promise<void>;
   removeFromCart: (productId: string, selectedSize?: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -63,11 +64,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   // Função para gerar chave única baseada em product_id + selectedSize
   const generateCartItemKey = (productId: string, selectedSize?: number): string => {
     const key = `${productId}_${selectedSize || 'no-size'}`;
-    console.log('🔍 DEBUG - generateCartItemKey:', {
-      productId,
-      selectedSize,
-      key
-    });
     return key;
   };
 
@@ -89,16 +85,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const stored = localStorage.getItem(`cart_item_${key}`);
       const result = stored ? JSON.parse(stored) : null;
-      console.log('🔍 DEBUG - getCartItem:', {
-        productId,
-        selectedSize,
-        key,
-        stored,
-        result
-      });
+      // Item recuperado do localStorage
       return result;
     } catch (e) {
-      console.log('🔍 DEBUG - getCartItem erro:', e);
+      // Erro ao recuperar item do localStorage
       return null;
     }
   };
@@ -160,29 +150,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
       const { data, error } = await query;
 
-      console.log('🔍 DEBUG - Dados carregados do banco:', {
-        totalItems: data?.length || 0,
-        items: data?.map(item => ({
-          id: item.id,
-          product_id: item.product_id,
-          quantity: item.quantity
-        }))
-      });
+      // Dados carregados do banco de dados
 
       // Mapear os dados usando selected_size do banco de dados
       const mappedItems = (data || []).map((item, index) => {
         // Usar selected_size diretamente do banco de dados
         const selectedSize = item.selected_size;
         
-        console.log('🔍 DEBUG - Item do carrinho carregado:', {
-          index,
-          productId: item.product_id,
-          selectedSize: selectedSize,
-          hasSelectedSize: selectedSize !== null,
-          hasProduct: !!item.products,
-          itemId: item.id,
-          quantity: item.quantity
-        });
+        // Item do carrinho processado
         
         return {
           ...item,
@@ -191,19 +166,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         };
       });
 
-      // Debug: mostrar todos os itens do localStorage
-      console.log('🔍 DEBUG - Todos os itens do localStorage:');
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('cart_item_')) {
-          try {
-            const itemData = JSON.parse(localStorage.getItem(key) || '{}');
-            console.log('  - Chave:', key, 'Dados:', itemData);
-          } catch (e) {
-            console.log('  - Chave:', key, 'Erro ao parsear');
-          }
-        }
-      }
+      // Itens do localStorage processados
 
       // Filtrar itens duplicados baseado em product_id + selectedSize
       const uniqueItems = [];
@@ -228,7 +191,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Se ainda temos apenas 1 item mas deveria ter 2, vamos criar itens separados baseado no localStorage
       if (uniqueItems.length === 1 && data && data.length > 1) {
-        console.log('🔍 DEBUG - Detectado problema: 1 item único mas múltiplos no banco');
+        // Detectado problema de sincronização entre localStorage e banco
         
         // Buscar todas as numerações diferentes no localStorage
         const allSizes = new Set();
@@ -246,7 +209,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
         
-        console.log('🔍 DEBUG - Numerações encontradas no localStorage:', Array.from(allSizes));
+        // Numerações processadas do localStorage
         
         // Criar itens separados para cada numeração
         const separatedItems = [];
@@ -257,14 +220,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           separatedItems.push(item);
         }
         
-        console.log('🔍 DEBUG - Itens separados criados:', separatedItems.length);
+        // Itens separados por numeração criados
         setItems(separatedItems);
         return;
       }
 
       // SOLUÇÃO RADICAL: Se temos múltiplos itens no banco mas apenas 1 único, vamos forçar separação
       if (data && data.length > 1 && uniqueItems.length === 1) {
-        console.log('🔍 DEBUG - SOLUÇÃO RADICAL: Forçando separação de itens');
+        // Aplicando correção de sincronização
         
         // Criar itens separados baseado nos dados do banco
         const separatedItems = data.map((item, index) => {
@@ -293,30 +256,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           };
         });
         
-        console.log('🔍 DEBUG - Itens separados criados (SOLUÇÃO RADICAL):', separatedItems.length);
+        // Correção de sincronização aplicada
         setItems(separatedItems);
         return;
       }
       
-      console.log('🔍 DEBUG - Itens únicos após filtro:', {
-        totalUniqueItems: uniqueItems.length,
-        items: uniqueItems.map(item => ({
-          id: item.id,
-          product_id: item.product_id,
-          selectedSize: item.selectedSize,
-          quantity: item.quantity
-        }))
-      });
+      // Itens únicos processados
       
-      console.log('🔍 DEBUG - Itens mapeados finais:', {
-        totalMappedItems: mappedItems.length,
-        items: mappedItems.map(item => ({
-          id: item.id,
-          product_id: item.product_id,
-          selectedSize: item.selectedSize,
-          quantity: item.quantity
-        }))
-      });
+      // Itens finais mapeados
       
       setItems(uniqueItems);
     } catch (error) {
@@ -386,22 +333,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           selected_size: selectedSize
         };
       
-      // DEBUG: Mostrar informações do novo item
-      console.log('🔍 DEBUG - Criando novo item:', {
-        productId,
-        selectedSize,
-        quantity,
-        hasExistingItems: existingItems.length > 0
-      });
+      // Criando novo item no carrinho
 
-      console.log('🔍 DEBUG - Dados para inserção no banco:', {
-        cartData,
-        productId,
-        selectedSize,
-        quantity,
-        willCreateNewRecord: true,
-        reason: hasExistingItem ? 'Numeração diferente detectada' : 'Novo item'
-      });
+      // Dados preparados para inserção no banco
 
       const { data: insertedData, error } = await supabase
         .from('cart_items')
@@ -413,20 +347,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      console.log('✅ Item inserido com sucesso');
-      console.log('🔍 DEBUG - Item inserido no banco:', {
-        productId,
-        selectedSize,
-        quantity,
-        insertedData: insertedData?.[0]
-      });
+      // Item inserido com sucesso no banco
       
       // Salvar item no localStorage com chave única
       storeCartItem(productId, selectedSize, quantity);
-      console.log('🔍 DEBUG - Item salvo no localStorage:', {
-        key: generateCartItemKey(productId, selectedSize),
-        data: getCartItem(productId, selectedSize)
-      });
+      // Item salvo no localStorage
       
       await loadCart();
       toast({
@@ -515,6 +440,122 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       toast({
         title: "Erro",
         description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const addMultipleProductsToCart = async (productIds: string[], quantity = 1) => {
+    try {
+      console.log('🛒 Adicionando múltiplos produtos ao carrinho:', { productIds, quantity });
+      
+      // Aguardar inicialização do Supabase
+      await waitForSupabase();
+
+      let addedCount = 0;
+      const errors: string[] = [];
+
+      // Adicionar cada produto individualmente
+      for (const productId of productIds) {
+        try {
+          // Verificar se o produto existe
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('id, name, price, stock_quantity')
+            .eq('id', productId)
+            .single();
+
+          if (productError) {
+            console.error('❌ Erro ao verificar produto:', productError);
+            errors.push(`Produto ${productId} não encontrado`);
+            continue;
+          }
+
+          // Verificar estoque
+          if (product.stock_quantity < quantity) {
+            errors.push(`Estoque insuficiente para ${product.name}. Disponível: ${product.stock_quantity}`);
+            continue;
+          }
+
+          // Verificar se já existe no carrinho
+          let existingQuery = supabase
+            .from('cart_items')
+            .select('*')
+            .eq('product_id', productId);
+
+          if (user) {
+            existingQuery = existingQuery.eq('user_id', user.id);
+          } else {
+            existingQuery = existingQuery.eq('session_id', getSessionId());
+          }
+
+          const { data: existingItems, error: queryError } = await existingQuery;
+          
+          if (queryError) {
+            console.error('Erro ao verificar itens existentes:', queryError);
+            errors.push(`Erro ao verificar produto ${product.name}`);
+            continue;
+          }
+
+          // Se já existe, atualizar quantidade
+          if (existingItems && existingItems.length > 0) {
+            const existingItem = existingItems[0];
+            await updateQuantity(productId, existingItem.quantity + quantity);
+          } else {
+            // Criar novo item
+            const cartData = user 
+              ? { 
+                user_id: user.id, 
+                product_id: productId, 
+                quantity
+              }
+              : { 
+                session_id: getSessionId(), 
+                product_id: productId, 
+                quantity
+              };
+
+            const { error } = await supabase
+              .from('cart_items')
+              .insert(cartData);
+
+            if (error) {
+              console.error('❌ Erro ao inserir item:', error);
+              errors.push(`Erro ao adicionar ${product.name}`);
+              continue;
+            }
+          }
+
+          addedCount++;
+        } catch (error: any) {
+          console.error('❌ Erro ao processar produto:', error);
+          errors.push(`Erro ao processar produto ${productId}`);
+        }
+      }
+
+      await loadCart();
+
+      // Mostrar resultado
+      if (addedCount > 0) {
+        toast({
+          title: "Produtos adicionados!",
+          description: `${addedCount} produto(s) adicionado(s) ao carrinho com sucesso.`,
+        });
+      }
+
+      if (errors.length > 0) {
+        toast({
+          title: "Alguns produtos não foram adicionados",
+          description: errors.slice(0, 3).join(', ') + (errors.length > 3 ? '...' : ''),
+          variant: "destructive"
+        });
+      }
+
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar múltiplos produtos:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar produtos ao carrinho",
         variant: "destructive"
       });
     }
@@ -686,6 +727,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     isLoading,
     addToCart,
     addMultipleToCart,
+    addMultipleProductsToCart,
     updateQuantity,
     removeFromCart,
     clearCart,

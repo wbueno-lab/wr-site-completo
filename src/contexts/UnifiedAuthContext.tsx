@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (profileCache.current && 
         profileCache.current.id === userId && 
         Date.now() - profileCache.current.timestamp < CACHE_EXPIRATION) {
-      console.log('[Auth] Usando cache do perfil');
+      // Usando cache do perfil
       setProfile(profileCache.current.data);
       return;
     }
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsProfileLoading(true);
     
     try {
-      console.log('[Auth] Buscando perfil para usuário:', userId.slice(0, 8) + '...');
+      // Buscando perfil para usuário
       
       // Primeiro, verificar se há múltiplos perfis (o que causaria o erro PGRST301)
       const { data: profilesData, error: countError } = await supabase
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Se não há perfis, criar um
       if (!profilesData || profilesData.length === 0) {
-        console.log('[Auth] Perfil não encontrado, criando perfil básico...');
+        // Perfil não encontrado, criando perfil básico
         
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
         
-        console.log('[Auth] Perfil criado com sucesso');
+        // Perfil criado com sucesso
         setProfile(newProfile as Profile);
         profileCache.current = {
           id: userId,
@@ -147,10 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       if (profileData) {
-        console.log('[Auth] Perfil carregado:', { 
-          id: profileData.id?.slice(0, 8) + '...', 
-          is_admin: profileData.is_admin 
-        });
+        // Perfil carregado com sucesso
         
         // Atualizar cache
         profileCache.current = {
@@ -413,7 +410,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async (): Promise<void> => {
     try {
-      console.log('[Auth] Iniciando processo de logout');
+      // Iniciando processo de logout
       
       // Limpar estados imediatamente para UI responsiva
       setProfile(null);
@@ -467,7 +464,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Não lançar erro, continuar com limpeza local
       }
 
-      console.log('[Auth] Logout realizado com sucesso');
+      // Logout realizado com sucesso
       
       toast({
         title: "Logout realizado",

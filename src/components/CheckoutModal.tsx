@@ -52,16 +52,16 @@ const CheckoutModal = ({ isOpen, onClose }: CheckoutModalProps) => {
   // Função para buscar nomes de produtos que não foram carregados
   const fetchMissingProductNames = async () => {
     const missingProducts = items.filter(item => !item.product?.name);
-    console.log('🔍 DEBUG - Produtos sem nome:', missingProducts);
+    // Verificando produtos sem nome
     
     if (missingProducts.length === 0) {
-      console.log('🔍 DEBUG - Todos os produtos têm nome, não precisa buscar');
+      // Todos os produtos têm nome
       return;
     }
 
     try {
       const productIds = missingProducts.map(item => item.product_id);
-      console.log('🔍 DEBUG - Buscando nomes para IDs:', productIds);
+      // Buscando nomes dos produtos
       
       const { data, error } = await supabase
         .from('products')
@@ -73,14 +73,14 @@ const CheckoutModal = ({ isOpen, onClose }: CheckoutModalProps) => {
         return;
       }
 
-      console.log('🔍 DEBUG - Nomes encontrados:', data);
+      // Nomes dos produtos encontrados
 
       const namesMap: Record<string, string> = {};
       data?.forEach(product => {
         namesMap[product.id] = product.name;
       });
 
-      console.log('🔍 DEBUG - Mapa de nomes criado:', namesMap);
+      // Mapa de nomes criado
       setProductNames(namesMap);
     } catch (error) {
       console.error('Erro ao buscar nomes dos produtos:', error);
@@ -136,22 +136,8 @@ const CheckoutModal = ({ isOpen, onClose }: CheckoutModalProps) => {
         }
       };
 
-      console.log('🔍 Processando pagamento com dados:', orderData);
-
-      // Debug: Verificar dados antes de enviar para paymentService
-      console.log('🔍 DEBUG - Dados enviados para paymentService:', {
-        itemsCount: orderData.items.length,
-        itemsWithSize: orderData.items.filter(item => item.selectedSize !== undefined).length,
-        itemsDetails: orderData.items.map(item => ({
-          product_id: item.product_id,
-          selectedSize: item.selectedSize,
-          hasSelectedSize: item.selectedSize !== undefined
-        }))
-      });
-      
-      console.log('🔍 DEBUG - Chamando paymentService.processPayment...');
+      // Processando pagamento
       const result = await paymentService.processPayment(orderData);
-      console.log('🔍 DEBUG - Resultado do paymentService:', result);
       
       if (result.success && result.redirectUrl) {
         console.log('✅ Redirecionando para Mercado Pago:', result.redirectUrl);
@@ -186,8 +172,6 @@ const CheckoutModal = ({ isOpen, onClose }: CheckoutModalProps) => {
       setStep('address');
       setShippingAddress(null);
       // Buscar nomes dos produtos que não foram carregados
-      console.log('🔍 DEBUG - CheckoutModal aberto, items:', items);
-      console.log('🔍 DEBUG - Items sem nome:', items.filter(item => !item.product?.name));
       fetchMissingProductNames();
     }
   }, [isOpen, items]);
@@ -222,9 +206,7 @@ const CheckoutModal = ({ isOpen, onClose }: CheckoutModalProps) => {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                console.log('🔍 DEBUG - Forçando debug do carrinho:', items);
-                console.log('🔍 DEBUG - ProductNames:', productNames);
-                console.log('🔍 DEBUG - Items com tamanho:', items.filter(item => item.selectedSize));
+                // Recarregando nomes dos produtos
                 fetchMissingProductNames();
               }}
             >
