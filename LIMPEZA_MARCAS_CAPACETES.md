@@ -113,3 +113,7 @@ Após a migração, o dropdown "Marca" nas abas de jaquetas e vestuário mostrar
 - X11
 
 Isso torna a seleção mais focada e específica para o tipo de produto sendo criado! 🎯
+
+
+
+

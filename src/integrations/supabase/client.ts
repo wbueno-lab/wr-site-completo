@@ -117,9 +117,42 @@ export const supabaseConfig = {
 } as const;
 
 // Função para aguardar inicialização
-export const waitForSupabase = () => {
-  if (supabaseInstance) return Promise.resolve(supabaseInstance);
-  return Promise.resolve(createSupabaseClient());
+export const waitForSupabase = async () => {
+  try {
+    if (supabaseInstance) return supabaseInstance;
+    
+    // Tentar criar cliente com timeout
+    const client = await withTimeout(
+      Promise.resolve(createSupabaseClient()), 
+      INIT_TIMEOUT, 
+      'Inicialização do Supabase'
+    );
+    
+    return client;
+  } catch (error) {
+    console.error('❌ Falha crítica na inicialização do Supabase:', error);
+    
+    // Em caso de erro crítico, retornar cliente básico sem configurações avançadas
+    console.log('🔄 Tentando cliente Supabase de fallback...');
+    try {
+      const fallbackClient = createClient<Database>(
+        ENV.SUPABASE_URL,
+        ENV.SUPABASE_ANON_KEY,
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false
+          }
+        }
+      );
+      
+      console.log('✅ Cliente Supabase de fallback criado');
+      return fallbackClient;
+    } catch (fallbackError) {
+      console.error('❌ Falha completa na inicialização do Supabase:', fallbackError);
+      throw new Error('Não foi possível conectar ao servidor. Verifique sua conexão.');
+    }
+  }
 };
 
 // Exportar cliente diretamente

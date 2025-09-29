@@ -141,3 +141,7 @@ const jacketBrands = brands.filter(brand =>
 | Vestuário | ~15 marcas | 4 marcas | ✅ Organizado |
 
 Agora as páginas do usuário mostram apenas as marcas corretas para cada tipo de produto! 🎯
+
+
+
+

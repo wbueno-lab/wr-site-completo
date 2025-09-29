@@ -31,7 +31,7 @@ interface Product {
   helmet_numbers?: number[];
   helmet_type?: string;
   shell_sizes?: string[];
-  available_sizes?: number[];
+  available_sizes?: string[]; // Alterado de number[] para string[]
   categories?: {
     name: string;
   };
@@ -94,18 +94,78 @@ const CatalogPage = () => {
     }
   }, [searchParams]);
 
-  // Calculate max price from products
+  // Filtrar produtos da categoria Capacetes
+  const capacetesProducts = useMemo(() => {
+    console.log('🔍 CatalogPage: Filtrando produtos de capacetes...');
+    console.log('📊 Total de produtos:', allProducts.length);
+    console.log('📂 Categorias disponíveis:', categories?.map(c => ({ name: c.name, slug: c.slug })));
+    
+    const capacetesCategory = categories?.find(cat => cat.slug === 'capacetes');
+    console.log('🎯 Categoria capacetes encontrada:', capacetesCategory);
+    
+    if (!capacetesCategory) {
+      console.log('⚠️ Categoria "capacetes" não encontrada, usando fallback por palavras-chave');
+      // Fallback para palavras-chave caso a categoria não exista
+      const fallbackProducts = allProducts.filter(product => {
+        const productName = product.name.toLowerCase();
+        const categoryName = product.categories?.name?.toLowerCase() || '';
+        
+        const capacetesKeywords = [
+          'capacete', 'capacetes', 'helmet', 'helmets',
+          'integral', 'modular', 'aberto', 'fechado',
+          'articulado', 'off-road', 'motocross', 'trilha',
+          'viseira', 'solar', 'flip-up', 'jet', 'full-face'
+        ];
+        
+        return capacetesKeywords.some(keyword => 
+          productName.includes(keyword) || categoryName.includes(keyword)
+        );
+      });
+      console.log('📦 Produtos encontrados via fallback:', fallbackProducts.length);
+      return fallbackProducts;
+    }
+    
+    const categoryProducts = allProducts.filter(product => product.category_id === capacetesCategory.id);
+    console.log('📦 Produtos encontrados na categoria:', categoryProducts.length);
+    console.log('🔍 Produtos da categoria capacetes:', categoryProducts.map(p => ({ name: p.name, category_id: p.category_id })));
+    
+    // Se não há produtos na categoria específica, usar fallback por palavras-chave
+    if (categoryProducts.length === 0) {
+      console.log('⚠️ Nenhum produto na categoria "capacetes", usando fallback por palavras-chave');
+      const fallbackProducts = allProducts.filter(product => {
+        const productName = product.name.toLowerCase();
+        const categoryName = product.categories?.name?.toLowerCase() || '';
+        
+        const capacetesKeywords = [
+          'capacete', 'capacetes', 'helmet', 'helmets',
+          'integral', 'modular', 'aberto', 'fechado',
+          'articulado', 'off-road', 'motocross', 'trilha',
+          'viseira', 'solar', 'flip-up', 'jet', 'full-face'
+        ];
+        
+        return capacetesKeywords.some(keyword => 
+          productName.includes(keyword) || categoryName.includes(keyword)
+        );
+      });
+      console.log('📦 Produtos encontrados via fallback secundário:', fallbackProducts.length);
+      return fallbackProducts;
+    }
+    
+    return categoryProducts;
+  }, [allProducts, categories]);
+
+  // Calculate max price from capacetes products
   useEffect(() => {
-    if (allProducts.length > 0) {
-      const maxProductPrice = Math.max(...allProducts.map(p => p.price));
+    if (capacetesProducts.length > 0) {
+      const maxProductPrice = Math.max(...capacetesProducts.map(p => p.price));
       setMaxPrice(Math.ceil(maxProductPrice));
       setPriceRange([0, Math.ceil(maxProductPrice)]);
     }
-  }, [allProducts]);
+  }, [capacetesProducts]);
 
   // Filter and sort products based on current filters
   const filteredProducts = useMemo(() => {
-    let filtered = allProducts.filter(product => product.is_active);
+    let filtered = capacetesProducts.filter(product => product.is_active);
 
     // Apply category filter
     if (selectedCategory !== "all") {
@@ -178,14 +238,22 @@ const CatalogPage = () => {
     // Apply helmet size filter
     if (selectedHelmetSizes.length > 0) {
       filtered = filtered.filter(product => {
-        // Verificar tanto shell_sizes (string[]) quanto available_sizes (number[])
+        // Verificar available_sizes (TEXT[]) - principal campo para tamanhos
+        const hasAvailableSizes = product.available_sizes && Array.isArray(product.available_sizes) &&
+          selectedHelmetSizes.some(selectedSize => {
+            // Como available_sizes agora é TEXT[], comparar como strings
+            return product.available_sizes!.includes(selectedSize);
+          });
+        
+        // Verificar shell_sizes (TEXT[]) como fallback
         const hasShellSizes = product.shell_sizes && Array.isArray(product.shell_sizes) && 
           selectedHelmetSizes.some(selectedSize => product.shell_sizes!.includes(selectedSize));
         
-        const hasAvailableSizes = product.available_sizes && Array.isArray(product.available_sizes) &&
-          selectedHelmetSizes.some(selectedSize => product.available_sizes!.includes(parseInt(selectedSize)));
+        // Verificar helmet_numbers (number[]) como fallback adicional para compatibilidade
+        const hasHelmetNumbers = product.helmet_numbers && Array.isArray(product.helmet_numbers) &&
+          selectedHelmetSizes.some(selectedSize => product.helmet_numbers!.includes(parseInt(selectedSize)));
           
-        return hasShellSizes || hasAvailableSizes;
+        return hasAvailableSizes || hasShellSizes || hasHelmetNumbers;
       });
     }
 
@@ -204,7 +272,7 @@ const CatalogPage = () => {
     }
 
     return filtered;
-  }, [allProducts, selectedCategory, selectedBrands, selectedHelmetTypes, selectedHelmetSizes, searchQuery, priceRange, showNewOnly, showPromoOnly, sortBy]);
+  }, [capacetesProducts, selectedCategory, selectedBrands, selectedHelmetTypes, selectedHelmetSizes, searchQuery, priceRange, showNewOnly, showPromoOnly, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,7 +287,7 @@ const CatalogPage = () => {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gradient-hero mb-4">
-            Catálogo de Produtos
+            Capacetes
           </h1>
           <p className="text-muted-foreground">
             Explore nossa linha completa de capacetes premium

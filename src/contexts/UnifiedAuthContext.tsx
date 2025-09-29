@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import { useConnectivity } from '@/hooks/useConnectivity';
-import { useAuthState } from '@/hooks/useAuthState';
+import useAuthState from '@/hooks/useAuthState';
 
 type Tables = Database['public']['Tables'];
 type Profile = Tables['profiles']['Row'];

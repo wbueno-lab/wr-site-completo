@@ -171,6 +171,7 @@ export class ProductService {
             is_active,
             stock_quantity,
             helmet_numbers,
+            available_sizes,
             helmet_type,
             material,
             weight_grams,

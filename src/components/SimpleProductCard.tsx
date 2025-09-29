@@ -9,6 +9,7 @@ import QuickViewModal from "./QuickViewModal";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BasicQualityImage } from "./BasicQualityImage";
+import ImageHoverPreview from "./ImageHoverPreview";
 
 interface SimpleProductCardProps {
   product: {
@@ -27,6 +28,7 @@ interface SimpleProductCardProps {
     isPromo?: boolean;
     galleryImages?: string[];
     helmet_numbers?: number[];
+    available_sizes?: string[];
   };
 }
 
@@ -39,9 +41,19 @@ const SimpleProductCard = ({ product }: SimpleProductCardProps) => {
   const [showQuickView, setShowQuickView] = useState(false);
 
   const handleAddToCart = async () => {
+    console.log('🛒 SimpleProductCard: Iniciando adição ao carrinho', {
+      productId: product.id,
+      productName: product.name,
+      user: user?.id || 'não logado',
+      isLoading: isLoading
+    });
+    
     setIsAdding(true);
     try {
       await addToCart(product.id);
+      console.log('✅ SimpleProductCard: Produto adicionado com sucesso');
+    } catch (error) {
+      console.error('❌ SimpleProductCard: Erro ao adicionar produto:', error);
     } finally {
       setIsAdding(false);
     }
@@ -79,10 +91,11 @@ const SimpleProductCard = ({ product }: SimpleProductCardProps) => {
   return (
     <Card className="group card-hover border-animated overflow-hidden cursor-pointer" onClick={handleProductClick}>
       <div className="relative">
-        <BasicQualityImage
+        <ImageHoverPreview
           src={getBestImage()}
           alt={product.name}
           className="h-64 w-full"
+          previewSize={250}
         />
         
         {/* Badges */}
@@ -105,7 +118,10 @@ const SimpleProductCard = ({ product }: SimpleProductCardProps) => {
             variant="ghost" 
             size="icon" 
             className={`bg-background/80 hover:bg-background ${isFavorite(product.id) ? 'text-red-500' : ''}`}
-            onClick={handleToggleFavorite}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleFavorite();
+            }}
           >
             <Heart className={`h-4 w-4 ${isFavorite(product.id) ? 'fill-current' : ''}`} />
           </Button>
@@ -113,7 +129,10 @@ const SimpleProductCard = ({ product }: SimpleProductCardProps) => {
             variant="ghost" 
             size="icon" 
             className="bg-background/80 hover:bg-background"
-            onClick={handleQuickView}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleQuickView();
+            }}
           >
             <Eye className="h-4 w-4" />
           </Button>
@@ -152,6 +171,25 @@ const SimpleProductCard = ({ product }: SimpleProductCardProps) => {
               )}
             </div>
           )}
+
+          {/* Tamanhos das Jaquetas */}
+          {product.available_sizes && product.available_sizes.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {product.available_sizes.slice(0, 4).map((size) => (
+                <span
+                  key={size}
+                  className="text-xs bg-accent-neon/20 text-accent-neon px-2 py-1 rounded-full font-medium"
+                >
+                  {size}
+                </span>
+              ))}
+              {product.available_sizes.length > 4 && (
+                <span className="text-xs text-muted-foreground px-2 py-1">
+                  +{product.available_sizes.length - 4}
+                </span>
+              )}
+            </div>
+          )}
           <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-accent-neon transition-colors">
             {product.name}
           </h3>
@@ -171,7 +209,10 @@ const SimpleProductCard = ({ product }: SimpleProductCardProps) => {
             variant="cart" 
             className="w-full mt-4" 
             size="lg"
-            onClick={handleAddToCart}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddToCart();
+            }}
             disabled={isAdding}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />

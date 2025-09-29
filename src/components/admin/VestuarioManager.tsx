@@ -111,6 +111,24 @@ const VestuarioManager = ({ products, categories, brands, toast }: VestuarioMana
       return;
     }
 
+    // Validar tamanho dos campos para evitar erro de VARCHAR(500)
+    const fieldsToValidate = [
+      { field: 'material', value: productForm.material, name: 'Material' },
+      { field: 'protection_level', value: productForm.protection_level, name: 'Nível de Proteção' },
+      { field: 'country_of_origin', value: productForm.country_of_origin, name: 'País de Origem' }
+    ];
+
+    for (const { field, value, name } of fieldsToValidate) {
+      if (value && value.length > 500) {
+        toast({
+          title: "Erro",
+          description: `${name} deve ter no máximo 500 caracteres. Atual: ${value.length}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       const { error } = await supabase
         .from('products')

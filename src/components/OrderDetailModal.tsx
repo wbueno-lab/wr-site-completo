@@ -29,7 +29,7 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
-  selected_size?: number;
+  selected_size?: number | string;
   product_snapshot: {
     id: string;
     name: string;
@@ -39,7 +39,7 @@ interface OrderItem {
     helmet_type?: string;
     color_options?: string[];
     size?: string;
-    selected_size?: number;
+    selected_size?: number | string;
     material?: string;
     certifications?: string[];
     is_new?: boolean;
@@ -323,29 +323,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     ? Math.round(((product.original_price - item.unit_price) / product.original_price) * 100)
                     : 0;
 
-                  // Debug: Log para verificar os dados
-                  console.log('🔍 DEBUG - OrderDetailModal - Item:', {
-                    itemId: item.id,
-                    productId: item.product_id,
-                    selectedSize: item.selected_size,
-                    productSnapshot: item.product_snapshot,
-                    productSnapshotSelectedSize: item.product_snapshot?.selected_size,
-                    productName: product?.name,
-                    hasProductSnapshot: !!item.product_snapshot,
-                    hasProduct: !!item.product,
-                    willShowSize: !!(item.selected_size || item.product_snapshot?.selected_size)
-                  });
-                  
-                  // Log detalhado do item completo
-                  console.log('🔍 DEBUG - Item completo (JSON):', JSON.stringify({
-                    id: item.id,
-                    product_id: item.product_id,
-                    selected_size: item.selected_size,
-                    product_snapshot: item.product_snapshot
-                  }, null, 2));
-
-                  // Debug mais detalhado do product_snapshot
-                  if (item.product_snapshot) {
+                  // Debug mais detalhado do product_snapshot (apenas em desenvolvimento)
+                  if (process.env.NODE_ENV === 'development' && item.product_snapshot) {
                     console.log('🔍 DEBUG - Product Snapshot Details:', {
                       type: typeof item.product_snapshot,
                       isObject: typeof item.product_snapshot === 'object',
@@ -414,20 +393,31 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                                   </p>
                                 )}
                                 {(() => {
-                                  // Extrair tamanho do product_snapshot
+                                  // Extrair tamanho/numeração do product_snapshot
                                   let selectedSize = null;
+                                  let isHelmet = false;
+                                  let isJacket = false;
                                   
-                                  // Debug: Log completo do item
-                                  console.log('🔍 DEBUG - Item completo:', {
-                                    itemId: item.id,
-                                    productId: item.product_id,
-                                    productSnapshot: item.product_snapshot,
-                                    snapshotType: typeof item.product_snapshot,
-                                    hasSelectedSizeField: 'selected_size' in (item.product_snapshot || {}),
-                                    selectedSizeValue: item.product_snapshot?.selected_size
-                                  });
+                                  // Detectar tipo de produto
+                                  if (item.product_snapshot) {
+                                    // Verificar se é capacete (tem helmet_numbers ou helmet_type)
+                                    isHelmet = !!(item.product_snapshot.helmet_numbers || item.product_snapshot.helmet_type);
+                                    // Verificar se é jaqueta (tem available_sizes ou jacket_type)
+                                    isJacket = !!(item.product_snapshot.available_sizes || item.product_snapshot.jacket_type);
+                                  }
                                   
-                                  // Tentar extrair do product_snapshot
+                                  // Debug: Log apenas em desenvolvimento
+                                  if (process.env.NODE_ENV === 'development') {
+                                    console.log('🔍 DEBUG - Item completo:', {
+                                      itemId: item.id,
+                                      productId: item.product_id,
+                                      isHelmet,
+                                      isJacket,
+                                      selectedSizeValue: item.product_snapshot?.selected_size || item.selected_size
+                                    });
+                                  }
+                                  
+                                  // Tentar extrair tamanho do product_snapshot
                                   if (item.product_snapshot) {
                                     if (typeof item.product_snapshot === 'object' && item.product_snapshot !== null) {
                                       // Se for um objeto, acessar selected_size diretamente
@@ -448,21 +438,39 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                                     selectedSize = item.selected_size;
                                   }
                                   
-                                  console.log('🔍 DEBUG - Size extraction result:', {
-                                    finalSelectedSize: selectedSize,
-                                    hasSize: !!selectedSize,
-                                    sizeType: typeof selectedSize
-                                  });
+                                  // Para jaquetas, converter número para string se necessário
+                                  if (isJacket && typeof selectedSize === 'number') {
+                                    // Se for número, provavelmente é um erro - jaquetas usam strings como "M", "G", etc.
+                                    selectedSize = null;
+                                  }
                                   
-                                  return selectedSize ? (
-                                    <p className="text-sm text-primary font-medium">
-                                      <span className="font-medium">Numeração:</span> {selectedSize}
-                                    </p>
-                                  ) : (
-                                    <p className="text-sm text-gray-500">
-                                      <span className="font-medium">Numeração:</span> Tamanho não especificado
-                                    </p>
-                                  );
+                                  // Debug: Log resultado apenas em desenvolvimento
+                                  if (process.env.NODE_ENV === 'development') {
+                                    console.log('🔍 DEBUG - Size extraction result:', {
+                                      finalSelectedSize: selectedSize,
+                                      hasSize: !!selectedSize,
+                                      sizeType: typeof selectedSize,
+                                      productType: isHelmet ? 'capacete' : isJacket ? 'jaqueta' : 'desconhecido'
+                                    });
+                                  }
+                                  
+                                  if (selectedSize) {
+                                    const label = isJacket ? 'Tamanho' : 'Numeração';
+                                    const unit = isHelmet && typeof selectedSize === 'number' ? 'cm' : '';
+                                    
+                                    return (
+                                      <p className="text-sm text-primary font-medium">
+                                        <span className="font-medium">{label}:</span> {selectedSize}{unit}
+                                      </p>
+                                    );
+                                  } else {
+                                    const label = isJacket ? 'Tamanho' : 'Numeração';
+                                    return (
+                                      <p className="text-sm text-gray-500">
+                                        <span className="font-medium">{label}:</span> Não especificado
+                                      </p>
+                                    );
+                                  }
                                 })()}
                               </div>
 

@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { fetch, RequestInit, Response } from '../lib/fetch';
 import { useAuth } from '@/contexts/UnifiedAuthContext';
-import { useAuthState } from '@/hooks/useAuthState';
+import useAuthState from '@/hooks/useAuthState';
 
 // Tipos para o fetch
 type FetchOptions = RequestInit & {

@@ -9,7 +9,7 @@ export interface OrderData {
     quantity: number;
     price: number;
     product_name?: string;
-    selectedSize?: number;
+    selectedSize?: number | string;
     helmet_sizes?: number[];
   }>;
   total_amount: number;

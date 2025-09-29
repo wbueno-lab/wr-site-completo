@@ -31,6 +31,8 @@ import { Tables } from '@/integrations/supabase/types';
 import { productService, ProductWithCategory } from '@/services/productService';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { ImageCarousel } from '@/components/ImageCarousel';
+import { EnhancedProductCarousel } from '@/components/EnhancedProductCarousel';
+import { WorkingCarousel } from '@/components/WorkingCarousel';
 import ProductReviews from '@/components/ProductReviews';
 import SizeSelectionModal from '@/components/SizeSelectionModal';
 import HelmetNumberingModal from '@/components/HelmetNumberingModal';
@@ -148,7 +150,7 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
   const { toast } = useToast();
   
   const [isAdding, setIsAdding] = useState(false);
-  const [selectedSize, setSelectedSize] = useState<number | null>(null);
+  const [selectedSize, setSelectedSize] = useState<number | string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [showHelmetNumberingModal, setShowHelmetNumberingModal] = useState(false);
@@ -170,10 +172,14 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
       return;
     }
 
-    if (product.helmet_numbers && product.helmet_numbers.length > 0 && selectedSize === null) {
+    // Check if size selection is required
+    const hasHelmetNumbers = product.helmet_numbers && product.helmet_numbers.length > 0;
+    const hasAvailableSizes = product.available_sizes && product.available_sizes.length > 0;
+    
+    if ((hasHelmetNumbers || hasAvailableSizes) && selectedSize === null) {
       toast({
-        title: "Numeração necessária",
-        description: "Por favor, selecione uma numeração",
+        title: hasHelmetNumbers ? "Numeração necessária" : "Tamanho necessário",
+        description: hasHelmetNumbers ? "Por favor, selecione uma numeração" : "Por favor, selecione um tamanho",
         variant: "destructive",
       });
       return;
@@ -270,6 +276,7 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
   const getGalleryImages = () => {
     if (!product) return [];
     
+    
     // Primeiro tenta gallery_images (campo usado pelo admin)
     let gallery = product.gallery_images as any;
     
@@ -316,7 +323,7 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
     }
     
     // Fallback para imagem única
-    return [{
+    const fallbackImages = [{
       id: 'main-image',
       thumbnail: product.image_url || '/placeholder.svg',
       medium: product.image_url || '/placeholder.svg',
@@ -329,6 +336,8 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
         dimensions: { width: 0, height: 0 }
       }
     }];
+    
+    return fallbackImages;
   };
 
   if (loading) {
@@ -423,12 +432,19 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Carrossel de Imagens */}
+          {/* Carrossel de Imagens Aprimorado */}
           <div className="space-y-4">
-            <ImageCarousel 
-              images={galleryImages}
-              productName={product.name}
-            />
+            {(() => {
+              const galleryImages = getGalleryImages();
+              const imageUrls = galleryImages.map(img => img.large || img.medium || img.thumbnail);
+              
+              return (
+                <WorkingCarousel 
+                  images={imageUrls}
+                  productName={product.name}
+                />
+              );
+            })()}
           </div>
 
           {/* Informações do Produto */}
@@ -503,6 +519,30 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
                 </p>
               </div>
             )}
+
+            {/* Tamanhos das Jaquetas */}
+            {product.available_sizes && product.available_sizes.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-medium text-lg">Tamanho Disponível</h3>
+                <div className="flex flex-wrap gap-2">
+                  {product.available_sizes.map((size) => (
+                    <Button
+                      key={size}
+                      variant={selectedSize === size ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedSize(size)}
+                      className="min-w-[50px]"
+                    >
+                      {size}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Selecione o tamanho da jaqueta (PP, P, M, G, GG, etc.)
+                </p>
+              </div>
+            )}
+
 
             {/* Quantidade */}
             <div className="space-y-3">

@@ -13,6 +13,7 @@ import { DirectImage } from "./DirectImage";
 import { TestImage } from "./TestImage";
 import NativeImage from "./NativeImage";
 import SimpleSupabaseImage from "./SimpleSupabaseImage";
+import ImageHoverPreview from "./ImageHoverPreview";
 
 interface ForceQualityProductCardProps {
   product: {
@@ -103,10 +104,11 @@ const ForceQualityProductCard = ({ product }: ForceQualityProductCardProps) => {
       }}
     >
       <div className="relative">
-        <SimpleSupabaseImage
+        <ImageHoverPreview
           src={getBestImage()}
           alt={product.name}
-          className="h-64 w-full object-cover"
+          className="h-64 w-full"
+          previewSize={250}
         />
         
         {/* Badges */}

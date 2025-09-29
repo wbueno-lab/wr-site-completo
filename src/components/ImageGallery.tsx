@@ -1,275 +1,192 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { X, ChevronLeft, ChevronRight, Download, ZoomIn } from 'lucide-react';
-import { formatFileSize } from '@/lib/imageUtils';
-import { imageCache, preloadImage } from '@/lib/imageCache';
-
-interface ImageData {
-  id: string;
-  thumbnail: string;
-  medium: string;
-  large: string;
-  original: string;
-  metadata: {
-    originalSize: number;
-    compressedSize: number;
-    compressionRatio: number;
-    dimensions: { width: number; height: number };
-  };
-}
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, X, ZoomIn, RotateCcw } from "lucide-react";
+import { MaxQualityImage } from "./MaxQualityImage";
 
 interface ImageGalleryProps {
-  images: ImageData[];
-  onRemoveImage?: (index: number) => void;
-  showMetadata?: boolean;
-  maxThumbnails?: number;
+  images: string[];
+  productName: string;
+  isOpen: boolean;
+  onClose: () => void;
+  initialIndex?: number;
 }
 
-export const ImageGallery = ({ 
+const ImageGallery = ({ 
   images, 
-  onRemoveImage, 
-  showMetadata = true,
-  maxThumbnails = 6 
+  productName, 
+  isOpen, 
+  onClose, 
+  initialIndex = 0 
 }: ImageGalleryProps) => {
-  const [selectedImage, setSelectedImage] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isZoomed, setIsZoomed] = useState(false);
 
-  const handleImageClick = (index: number) => {
-    setSelectedImage(index);
-    setIsModalOpen(true);
-  };
+  useEffect(() => {
+    setCurrentIndex(initialIndex);
+  }, [initialIndex]);
 
-  const handlePrevious = () => {
-    if (selectedImage !== null && selectedImage > 0) {
-      setSelectedImage(selectedImage - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (selectedImage !== null && selectedImage < images.length - 1) {
-      setSelectedImage(selectedImage + 1);
-    }
-  };
-
-  const handleDownload = async (imageData: ImageData) => {
-    try {
-      const response = await fetch(imageData.large);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `imagem-${imageData.id}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Erro ao baixar imagem:', error);
-    }
-  };
-
-  const preloadImageInCache = async (imageData: ImageData) => {
-    if (!loadedImages.has(imageData.id)) {
-      try {
-        await preloadImage(imageData.large);
-        setLoadedImages(prev => new Set([...prev, imageData.id]));
-      } catch (error) {
-        console.error('Erro ao pré-carregar imagem:', error);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          prevImage();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          nextImage();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          onClose();
+          break;
+        case ' ':
+          event.preventDefault();
+          toggleZoom();
+          break;
       }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = 'unset';
+      };
     }
+  }, [isOpen, onClose]);
+
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
   };
 
-  const visibleImages = images.slice(0, maxThumbnails);
-  const hasMoreImages = images.length > maxThumbnails;
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
 
-  if (images.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p>Nenhuma imagem disponível</p>
-      </div>
-    );
-  }
+  const goToImage = (index: number) => {
+    setCurrentIndex(index);
+  };
+
+  const toggleZoom = () => {
+    setIsZoomed(!isZoomed);
+  };
+
+  const resetZoom = () => {
+    setIsZoomed(false);
+  };
+
+  if (!isOpen || images.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Galeria de Imagens</h3>
-        <Badge variant="secondary">
-          {images.length} imagem{images.length !== 1 ? 'ns' : ''}
-        </Badge>
-      </div>
+    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+      {/* Close Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white"
+        onClick={onClose}
+      >
+        <X className="h-6 w-6" />
+      </Button>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {visibleImages.map((imageData, index) => (
-          <Card key={imageData.id} className="relative group cursor-pointer">
-            <CardContent className="p-2">
-              <img
-                src={imageData.thumbnail}
-                alt={`Imagem ${index + 1}`}
-                className="w-full h-32 object-cover rounded"
-                onClick={() => handleImageClick(index)}
-                onLoad={() => preloadImageInCache(imageData)}
-              />
-              
-              {/* Overlay com ações */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleImageClick(index);
-                    }}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(imageData);
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  {onRemoveImage && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveImage(index);
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+      {/* Navigation Arrows */}
+      {images.length > 1 && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+            onClick={prevImage}
+          >
+            <ChevronLeft className="h-8 w-8" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+            onClick={nextImage}
+          >
+            <ChevronRight className="h-8 w-8" />
+          </Button>
+        </>
+      )}
 
-              {/* Metadados */}
-              {showMetadata && (
-                <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-white text-xs p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="flex justify-between">
-                    <span>{formatFileSize(imageData.metadata.compressedSize)}</span>
-                    <span>-{imageData.metadata.compressionRatio.toFixed(0)}%</span>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+      {/* Image Counter */}
+      {images.length > 1 && (
+        <div className="absolute top-4 left-4 z-10 bg-black/70 text-white px-3 py-1 rounded text-sm">
+          {currentIndex + 1} / {images.length}
+        </div>
+      )}
 
-        {/* Indicador de mais imagens */}
-        {hasMoreImages && (
-          <Card className="relative group cursor-pointer">
-            <CardContent className="p-2 flex items-center justify-center h-32">
-              <div className="text-center">
-                <p className="text-sm font-medium">+{images.length - maxThumbnails}</p>
-                <p className="text-xs text-muted-foreground">mais imagens</p>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Zoom Controls */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="bg-black/50 hover:bg-black/70 text-white"
+          onClick={toggleZoom}
+        >
+          <ZoomIn className="h-4 w-4 mr-2" />
+          {isZoomed ? 'Reduzir' : 'Ampliar'}
+        </Button>
+        {isZoomed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="bg-black/50 hover:bg-black/70 text-white"
+            onClick={resetZoom}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Resetar
+          </Button>
         )}
       </div>
 
-      {/* Modal de visualização */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-          <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="flex items-center justify-between">
-              <span>Imagem {selectedImage !== null ? selectedImage + 1 : 0} de {images.length}</span>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => selectedImage !== null && handleDownload(images[selectedImage])}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Baixar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedImage !== null && (
-            <div className="relative p-6">
-              <img
-                src={images[selectedImage].large}
-                alt={`Imagem ${selectedImage + 1}`}
-                className="w-full h-auto max-h-[60vh] object-contain mx-auto"
-              />
-              
-              {/* Navegação */}
-              {images.length > 1 && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute left-4 top-1/2 -translate-y-1/2"
-                    onClick={handlePrevious}
-                    disabled={selectedImage === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute right-4 top-1/2 -translate-y-1/2"
-                    onClick={handleNext}
-                    disabled={selectedImage === images.length - 1}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
+      {/* Main Image */}
+      <div className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+        <MaxQualityImage
+          src={images[currentIndex]}
+          alt={`${productName} - Imagem ${currentIndex + 1}`}
+          className={`max-w-full max-h-full object-contain transition-transform duration-300 ${
+            isZoomed ? 'scale-150 cursor-zoom-out' : 'scale-100 cursor-zoom-in'
+          }`}
+          onClick={toggleZoom}
+        />
+      </div>
 
-              {/* Metadados da imagem */}
-              {showMetadata && (
-                <div className="mt-4 p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Informações da Imagem</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Tamanho Original</p>
-                      <p className="font-medium">{formatFileSize(images[selectedImage].metadata.originalSize)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Tamanho Comprimido</p>
-                      <p className="font-medium">{formatFileSize(images[selectedImage].metadata.compressedSize)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Compressão</p>
-                      <p className="font-medium text-green-600">-{images[selectedImage].metadata.compressionRatio.toFixed(1)}%</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Economia</p>
-                      <p className="font-medium text-green-600">
-                        {formatFileSize(images[selectedImage].metadata.originalSize - images[selectedImage].metadata.compressedSize)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Thumbnail Navigation */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 max-w-[90vw] overflow-x-auto pb-2">
+          {images.map((image, index) => (
+            <button
+              key={index}
+              onClick={() => goToImage(index)}
+              className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                index === currentIndex 
+                  ? 'border-white ring-2 ring-white/50' 
+                  : 'border-transparent hover:border-white/50'
+              }`}
+            >
+              <MaxQualityImage
+                src={image}
+                alt={`${productName} - Thumbnail ${index + 1}`}
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Instructions */}
+      <div className="absolute bottom-4 right-4 text-white/70 text-xs">
+        <div>← → Navegar | ESC Fechar | Espaço Zoom</div>
+      </div>
     </div>
   );
 };
 
-
-
+export default ImageGallery;

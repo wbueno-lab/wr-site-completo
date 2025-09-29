@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Heart, Star, Truck, Shield, RotateCcw, MessageSquare, Tag, Package, Eye, MapPin } from "lucide-react";
+import { ShoppingCart, Heart, Star, Truck, Shield, RotateCcw, MessageSquare, Tag, Package, Eye, MapPin, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from '@/contexts/UnifiedAuthContext';
 import { useToast } from "@/components/ui/use-toast";
@@ -17,6 +17,7 @@ import { HighQualityImage } from "./HighQualityImage";
 import { MaxQualityImage } from "./MaxQualityImage";
 import SizeSelectionModal from "./SizeSelectionModal";
 import HelmetNumberingModal from "./HelmetNumberingModal";
+import ImageGallery from "./ImageGallery";
 
 interface Product {
   id: string;
@@ -24,11 +25,15 @@ interface Product {
   price: number;
   original_price?: number;
   image_url: string;
+  gallery_images?: string[];
+  image_thumbnail?: string;
+  image_medium?: string;
+  image_large?: string;
   description?: string;
   is_new: boolean;
   is_promo: boolean;
   stock_quantity: number;
-  available_sizes?: number[];
+  available_sizes?: string[]; // Alterado de number[] para string[]
   helmet_numbers?: number[];
   categories?: {
     name: string;
@@ -69,6 +74,9 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
   const [quantity, setQuantity] = useState(1);
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [showHelmetNumberingModal, setShowHelmetNumberingModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [allImages, setAllImages] = useState<string[]>([]);
+  const [showImageGallery, setShowImageGallery] = useState(false);
   const { addToCart, addMultipleToCart } = useCart();
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -80,6 +88,29 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
       fetchProduct();
     }
   }, [productId, isOpen]);
+
+  // Navegação por teclado
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen || allImages.length <= 1) return;
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        prevImage();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        nextImage();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, allImages.length, onClose]);
 
   const fetchProduct = async () => {
     if (!productId) return;
@@ -94,11 +125,16 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
           price,
           original_price,
           image_url,
+          gallery_images,
+          image_thumbnail,
+          image_medium,
+          image_large,
           description,
           is_new,
           is_promo,
           stock_quantity,
           available_sizes,
+          helmet_numbers,
           categories (
             name
           )
@@ -108,6 +144,19 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
 
       if (error) throw error;
       setProduct(data);
+      
+      // Preparar todas as imagens disponíveis
+      const images = [];
+      if (data.image_url) images.push(data.image_url);
+      if (data.image_large && data.image_large !== data.image_url) images.push(data.image_large);
+      if (data.image_medium && data.image_medium !== data.image_url && data.image_medium !== data.image_large) images.push(data.image_medium);
+      if (data.gallery_images && Array.isArray(data.gallery_images)) {
+        data.gallery_images.forEach(img => {
+          if (img && !images.includes(img)) images.push(img);
+        });
+      }
+      setAllImages(images);
+      setCurrentImageIndex(0);
     } catch (error) {
       console.error('Error fetching product:', error);
       toast({
@@ -190,6 +239,18 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
     return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
   };
 
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
 
   if (!product && !loading) return null;
 
@@ -218,12 +279,46 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Product Image */}
                 <div className="space-y-4">
-                  <div className="relative">
-                    <MaxQualityImage 
-                      src={product.image_url} 
-                      alt={product.name}
-                      className="w-full h-96 rounded-lg"
-                    />
+                  <div className="relative group">
+                    <button
+                      onClick={() => setShowImageGallery(true)}
+                      className="w-full h-96 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <MaxQualityImage 
+                        src={allImages[currentImageIndex] || product.image_url} 
+                        alt={product.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </button>
+                    
+                    {/* Navigation Arrows */}
+                    {allImages.length > 1 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={prevImage}
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={nextImage}
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Image Counter */}
+                    {allImages.length > 1 && (
+                      <div className="absolute bottom-4 right-4 bg-black/70 text-white px-2 py-1 rounded text-sm">
+                        {currentImageIndex + 1} / {allImages.length}
+                      </div>
+                    )}
                     
                     {/* Badges */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -249,6 +344,29 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
                       <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
                     </Button>
                   </div>
+
+                  {/* Thumbnail Navigation */}
+                  {allImages.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {allImages.map((image, index) => (
+                        <button
+                          key={index}
+                          onClick={() => goToImage(index)}
+                          className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                            index === currentImageIndex 
+                              ? 'border-primary ring-2 ring-primary/20' 
+                              : 'border-transparent hover:border-muted-foreground'
+                          }`}
+                        >
+                          <MaxQualityImage 
+                            src={image} 
+                            alt={`${product.name} - Imagem ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Info */}
@@ -291,7 +409,15 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
                       <h4 className="font-semibold mb-3">Tamanhos Disponíveis</h4>
                       <div className="flex flex-wrap gap-2">
                         {product.available_sizes
-                          .sort((a, b) => a - b)
+                          .sort((a, b) => {
+                            // Sort function that handles both strings and numbers
+                            if (typeof a === 'string' && typeof b === 'string') {
+                              // Custom sort for clothing sizes
+                              const sizeOrder = ['PP', 'P', 'M', 'G', 'GG', '3G', '4G', '5G', '6G', '7G', '8G', '9G', '10G', 'XS', 'S', 'L', 'XL', 'XXL', 'XXXL'];
+                              return sizeOrder.indexOf(a) - sizeOrder.indexOf(b);
+                            }
+                            return a - b;
+                          })
                           .map((size) => (
                             <Button
                               key={size}
@@ -527,6 +653,15 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
           productImage={product.image_url}
         />
       )}
+
+      {/* Image Gallery Modal */}
+      <ImageGallery
+        images={allImages}
+        productName={product?.name || ''}
+        isOpen={showImageGallery}
+        onClose={() => setShowImageGallery(false)}
+        initialIndex={currentImageIndex}
+      />
     </Dialog>
   );
 };

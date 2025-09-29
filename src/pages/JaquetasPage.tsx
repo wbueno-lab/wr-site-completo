@@ -93,26 +93,32 @@ const JaquetasPage = () => {
     }
   }, [allProducts]);
 
-  // Filtrar produtos relacionados a jaquetas
+  // Filtrar produtos da categoria Jaquetas
   const jaquetasProducts = useMemo(() => {
-    return allProducts.filter(product => {
-      const productName = product.name.toLowerCase();
-      const categoryName = product.categories?.name?.toLowerCase() || '';
-      
-      // Palavras-chave relacionadas especificamente a jaquetas
-      const jaquetasKeywords = [
-        'jaqueta', 'jaquetas', 'casaco', 'casacos',
-        'jacket', 'jackets', 'couro', 'leather',
-        'textil', 'textile', 'impermeável', 'impermeavel',
-        'ventilada', 'ventilado', 'touring', 'sport',
-        'racing', 'urbana', 'urbano', 'motociclismo'
-      ];
-      
-      return jaquetasKeywords.some(keyword => 
-        productName.includes(keyword) || categoryName.includes(keyword)
-      );
-    });
-  }, [allProducts]);
+    const jaquetasCategory = categories?.find(cat => cat.slug === 'jaquetas');
+    
+    if (!jaquetasCategory) {
+      // Fallback para palavras-chave caso a categoria não exista
+      return allProducts.filter(product => {
+        const productName = product.name.toLowerCase();
+        const categoryName = product.categories?.name?.toLowerCase() || '';
+        
+        const jaquetasKeywords = [
+          'jaqueta', 'jaquetas', 'casaco', 'casacos',
+          'jacket', 'jackets', 'couro', 'leather',
+          'textil', 'textile', 'impermeável', 'impermeavel',
+          'ventilada', 'ventilado', 'touring', 'sport',
+          'racing', 'urbana', 'urbano', 'motociclismo'
+        ];
+        
+        return jaquetasKeywords.some(keyword => 
+          productName.includes(keyword) || categoryName.includes(keyword)
+        );
+      });
+    }
+    
+    return allProducts.filter(product => product.category_id === jaquetasCategory.id);
+  }, [allProducts, categories]);
 
   // Filter products based on search and filters
   const filteredProducts = useMemo(() => {
@@ -442,6 +448,7 @@ const JaquetasPage = () => {
           </div>
         </div>
       </div>
+      
     </div>
   );
 };

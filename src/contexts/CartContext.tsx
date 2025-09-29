@@ -7,7 +7,7 @@ interface CartItem {
   id: string;
   product_id: string;
   quantity: number;
-  selectedSize?: number;
+  selectedSize?: number | string;
   product?: {
     id: string;
     name: string;
@@ -20,7 +20,7 @@ interface CartItem {
 interface CartContextType {
   items: CartItem[];
   isLoading: boolean;
-  addToCart: (productId: string, quantity?: number, selectedSize?: number) => Promise<void>;
+  addToCart: (productId: string, quantity?: number, selectedSize?: number | string) => Promise<void>;
   addMultipleToCart: (productId: string, quantity: number, selectedSizes: number[]) => Promise<void>;
   addMultipleProductsToCart: (productIds: string[], quantity?: number) => Promise<void>;
   updateQuantity: (productId: string, quantity: number, selectedSize?: number) => Promise<void>;
@@ -115,6 +115,31 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     if (size === null || size === undefined || size === '') return undefined;
     const num = typeof size === 'string' ? parseInt(size, 10) : size;
     return isNaN(num) ? undefined : num;
+  };
+
+  // Helper function to normalize selected_size for database insertion
+  const normalizeSelectedSizeForDB = (selectedSize: any): number | string | null => {
+    if (selectedSize === undefined || selectedSize === null || selectedSize === '') {
+      return null;
+    }
+    
+    if (typeof selectedSize === 'number') {
+      return selectedSize;
+    }
+    
+    if (typeof selectedSize === 'string') {
+      // Para strings, verificar se é um número ou um tamanho de jaqueta
+      const parsed = parseInt(selectedSize, 10);
+      if (!isNaN(parsed)) {
+        // Se for um número válido, retornar como número (capacetes)
+        return parsed;
+      } else {
+        // Se não for número, retornar como string (jaquetas: "M", "G", etc.)
+        return selectedSize.trim();
+      }
+    }
+    
+    return null;
   };
 
   // Load cart items
@@ -266,8 +291,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       // Itens finais mapeados
       
       setItems(uniqueItems);
-    } catch (error) {
-      console.error('Error loading cart:', error);
+    } catch (error: any) {
+      console.error('❌ Error loading cart:', error);
+      console.error('❌ Detalhes do erro de carregamento:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details
+      });
+      
+      // Não mostrar toast de erro para falhas de carregamento do carrinho
+      // O usuário pode continuar navegando mesmo se o carrinho não carregar
+      setItems([]); // Resetar para array vazio em caso de erro
     } finally {
       setIsLoading(false);
     }
@@ -277,9 +311,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     loadCart();
   }, [user]);
 
-  const addToCart = async (productId: string, quantity = 1, selectedSize?: number) => {
+  const addToCart = async (productId: string, quantity = 1, selectedSize?: number | string) => {
     try {
-      console.log('🛒 Adicionando ao carrinho:', { productId, quantity, selectedSize });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🛒 Adicionando ao carrinho:', { productId, quantity, selectedSize, user: user?.id || 'não logado' });
+      }
       
       // Aguardar inicialização do Supabase
       await waitForSupabase();
@@ -319,18 +355,29 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // Criar novo item no banco
+      // Garantir que selected_size seja null se undefined, ou um integer válido
+      const normalizedSelectedSize = normalizeSelectedSizeForDB(selectedSize);
+      
+      console.log('🔍 Dados normalizados:', {
+        productId,
+        quantity,
+        selectedSize: selectedSize,
+        normalizedSelectedSize: normalizedSelectedSize,
+        user: user?.id || 'não logado'
+      });
+      
       const cartData = user 
         ? { 
           user_id: user.id, 
           product_id: productId, 
           quantity,
-          selected_size: selectedSize
+          selected_size: normalizedSelectedSize
         }
         : { 
           session_id: getSessionId(), 
           product_id: productId, 
           quantity,
-          selected_size: selectedSize
+          selected_size: normalizedSelectedSize
         };
       
       // Criando novo item no carrinho
@@ -344,7 +391,25 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('❌ Erro ao inserir item:', error);
-        throw error;
+        console.error('❌ Detalhes do erro:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Fornecer mensagens de erro mais específicas
+        if (error.code === '23503') {
+          throw new Error('Produto não encontrado no banco de dados');
+        } else if (error.code === '23505') {
+          throw new Error('Item já existe no carrinho');
+        } else if (error.message?.includes('permission')) {
+          throw new Error('Sem permissão para adicionar ao carrinho. Faça login e tente novamente.');
+        } else if (error.message?.includes('connection')) {
+          throw new Error('Problema de conexão. Verifique sua internet e tente novamente.');
+        }
+        
+        throw new Error(`Erro ao adicionar produto: ${error.message}`);
       }
       
       // Item inserido com sucesso no banco
@@ -405,18 +470,20 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           console.log('🔄 Criando novo item com numeração específica');
           // Criar novo item com numeração específica
+          const normalizedSelectedSize = normalizeSelectedSizeForDB(selectedSize);
+          
           const cartData = user 
             ? { 
               user_id: user.id, 
               product_id: productId, 
               quantity: 1,
-              selected_size: selectedSize
+              selected_size: normalizedSelectedSize
             }
             : { 
               session_id: getSessionId(), 
               product_id: productId, 
               quantity: 1,
-              selected_size: selectedSize
+              selected_size: normalizedSelectedSize
             };
 
           const { error } = await supabase

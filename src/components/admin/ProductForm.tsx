@@ -58,15 +58,18 @@ const ProductForm = ({ categories, brands, onSubmit, isEdit = false, initialData
 
   // Handler para gerenciar numerações e tamanhos de capacetes
   const handleSizeChange = useCallback((value: string) => {
-    const size = parseInt(value, 10);
-    if (!isNaN(size)) {
-      setFormData(prev => ({
-        ...prev,
-        available_sizes: prev.available_sizes.includes(size)
-          ? prev.available_sizes.filter(s => s !== size)
-          : [...prev.available_sizes, size].sort((a, b) => a - b)
-      }));
-    }
+    // Agora available_sizes é string[], então trabalhar diretamente com strings
+    setFormData(prev => ({
+      ...prev,
+      available_sizes: prev.available_sizes.includes(value)
+        ? prev.available_sizes.filter(s => s !== value)
+        : [...prev.available_sizes, value].sort((a, b) => {
+          // Ordenar numericamente mesmo sendo strings
+          const numA = parseInt(a, 10);
+          const numB = parseInt(b, 10);
+          return numA - numB;
+        })
+    }));
   }, []);
 
   const handleHelmetNumberChange = useCallback((number: number, checked: boolean) => {

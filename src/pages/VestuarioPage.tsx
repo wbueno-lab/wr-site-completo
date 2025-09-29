@@ -99,34 +99,39 @@ const VestuarioPage = () => {
     }
   }, [allProducts]);
 
-  // Filtrar produtos relacionados a vestuário
+  // Filtrar produtos da categoria Vestuário
   const vestuarioProducts = useMemo(() => {
-    return allProducts.filter(product => {
-      const productName = product.name.toLowerCase();
-      const categoryName = product.categories?.name?.toLowerCase() || '';
-      
-      // Palavras-chave relacionadas a vestuário
-      const vestuarioKeywords = [
-        'jaqueta', 'jaquetas', 'casaco', 'casacos',
-        'blusa', 'blusas', 'camisa', 'camisas',
-        'camiseta', 'camisetas', 'moletom', 'moletons',
-        'colete', 'coletes', 'luva', 'luvas',
-        'calça', 'calças', 'bermuda', 'bermudas',
-        'shorts', 'proteção', 'proteções',
-        'vestuário', 'roupa', 'roupas',
-        // Subcategorias específicas
-        'bota', 'botas', 'balaclava', 'balaclavas',
-        'segunda', 'pele', 'capa', 'chuva',
-        'impermeável', 'impermeavel',
-        // Categorias mantidas
-        'macacão', 'macacoes'
-      ];
-      
-      return vestuarioKeywords.some(keyword => 
-        productName.includes(keyword) || categoryName.includes(keyword)
-      );
-    });
-  }, [allProducts]);
+    const vestuarioCategory = categories?.find(cat => cat.slug === 'vestuario');
+    
+    if (!vestuarioCategory) {
+      // Fallback para palavras-chave caso a categoria não exista (excluindo jaquetas)
+      return allProducts.filter(product => {
+        const productName = product.name.toLowerCase();
+        const categoryName = product.categories?.name?.toLowerCase() || '';
+        
+        const vestuarioKeywords = [
+          'blusa', 'blusas', 'camisa', 'camisas',
+          'camiseta', 'camisetas', 'moletom', 'moletons',
+          'colete', 'coletes', 'luva', 'luvas',
+          'calça', 'calças', 'bermuda', 'bermudas',
+          'shorts', 'proteção', 'proteções',
+          'vestuário', 'roupa', 'roupas',
+          // Subcategorias específicas
+          'bota', 'botas', 'balaclava', 'balaclavas',
+          'segunda', 'pele', 'capa', 'chuva',
+          'impermeável', 'impermeavel',
+          // Categorias mantidas
+          'macacão', 'macacoes'
+        ];
+        
+        return vestuarioKeywords.some(keyword => 
+          productName.includes(keyword) || categoryName.includes(keyword)
+        );
+      });
+    }
+    
+    return allProducts.filter(product => product.category_id === vestuarioCategory.id);
+  }, [allProducts, categories]);
 
   // Filter products based on search and filters
   const filteredProducts = useMemo(() => {

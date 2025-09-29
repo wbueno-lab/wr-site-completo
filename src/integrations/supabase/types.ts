@@ -213,7 +213,7 @@ export type Database = {
       }
       products: {
         Row: {
-          available_sizes: number[] | null
+          available_sizes: string[] | null // Alterado de number[] para string[]
           brand_id: string | null
           category_id: string | null
           created_at: string
@@ -260,7 +260,7 @@ export type Database = {
           specifications: string | null
         }
         Insert: {
-          available_sizes?: number[] | null
+          available_sizes?: string[] | null // Alterado de number[] para string[]
           brand_id?: string | null
           category_id?: string | null
           created_at?: string
@@ -307,7 +307,7 @@ export type Database = {
           specifications?: string | null
         }
         Update: {
-          available_sizes?: number[] | null
+          available_sizes?: string[] | null // Alterado de number[] para string[]
           brand_id?: string | null
           category_id?: string | null
           created_at?: string

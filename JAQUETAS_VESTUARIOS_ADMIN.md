@@ -158,3 +158,7 @@ Para dúvidas ou problemas com os novos módulos, verifique:
 2. Se as permissões de admin estão corretas
 3. Se os campos adicionais foram criados na tabela products
 4. Se há erros no console do navegador
+
+
+
+

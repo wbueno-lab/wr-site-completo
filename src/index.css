@@ -195,3 +195,119 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Enhanced Product Carousel Styles */
+@layer components {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth carousel transitions */
+  .carousel-transition {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Enhanced thumbnail hover effects */
+  .thumbnail-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .thumbnail-hover:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Carousel controls with better visibility */
+  .carousel-control {
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+  }
+  .carousel-control:hover {
+    backdrop-filter: blur(12px);
+    transform: scale(1.1);
+  }
+
+  /* Enhanced indicators */
+  .carousel-indicator {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .carousel-indicator.active {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  }
+
+  /* Loading animation for images */
+  .image-loading {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Touch gesture feedback */
+  .touch-feedback {
+    transition: transform 0.1s ease-out;
+  }
+  .touch-feedback.swiping {
+    transform: scale(0.98);
+  }
+
+  /* Fullscreen modal enhancements */
+  .fullscreen-carousel {
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+  }
+
+  /* Smooth zoom effect for fullscreen images */
+  .fullscreen-image {
+    transition: transform 0.3s ease-in-out;
+  }
+  .fullscreen-image:hover {
+    transform: scale(1.02);
+  }
+}
+
+/* Custom animations */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.4s ease-out;
+}

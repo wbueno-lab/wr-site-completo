@@ -27,6 +27,9 @@ interface ProductManagerProps {
 const ProductManager = ({ products, categories, brands, toast }: ProductManagerProps) => {
   const [isCreating, setIsCreating] = useState(false);
 
+  // Encontrar a categoria de capacetes
+  const capacetesCategory = categories?.find(cat => cat.slug === 'capacetes');
+  
   // Filtrar marcas que fazem capacetes
   const helmetBrands = brands?.filter(brand => 
     brand.product_types?.includes('capacetes') || 
@@ -56,7 +59,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     price: '',
     original_price: '',
     stock_quantity: '',
-    category_id: 'none',
+    category_id: capacetesCategory?.id || 'none',
     brand_id: 'none',
     is_promo: false,
     is_new: false,
@@ -64,7 +67,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     image_url: '',
     gallery_images: [] as string[],
     specifications: '',
-    available_sizes: [] as number[],
+    available_sizes: [] as string[], // Alterado de number[] para string[]
     weight: '',
     material: '',
     helmet_type: 'fechado',
@@ -74,8 +77,17 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
     country_of_origin: ''
   });
 
-  // Filtrar produtos
+  // Filtrar produtos (apenas capacetes para esta aba)
   const filteredProducts = products?.filter(product => {
+    // Primeiro filtrar apenas produtos de capacetes
+    const isCapaceteProduct = capacetesCategory ? 
+      product.category_id === capacetesCategory.id :
+      // Fallback por palavras-chave se categoria não existir
+      product.name.toLowerCase().includes('capacete') || 
+      product.description?.toLowerCase().includes('capacete');
+    
+    if (!isCapaceteProduct) return false;
+    
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = !categoryFilter || product.category_id === categoryFilter;
@@ -257,7 +269,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
       price: '',
       original_price: '',
       stock_quantity: '',
-      category_id: '',
+      category_id: capacetesCategory?.id || '',
       brand_id: '',
       is_promo: false,
       is_new: false,
@@ -674,7 +686,7 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
                     <div>
                       <p className="text-xs text-gray-400 mb-1">Tamanhos:</p>
                       <div className="flex gap-1 flex-wrap">
-                        {product.available_sizes.slice(0, 4).map((size: number) => (
+                        {product.available_sizes.slice(0, 4).map((size: string) => (
                           <span key={size} className="text-xs bg-brand-green/20 text-brand-green px-2 py-1 rounded">
                             {size}
                           </span>

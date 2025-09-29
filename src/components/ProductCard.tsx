@@ -10,10 +10,10 @@ import { ProductImageCarousel } from "./ProductImageCarousel";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { selectBestImage } from "@/lib/imageSelection";
-import { SimpleImageCarousel } from "./SimpleImageCarousel";
 import { SimpleQualityImage } from "./SimpleQualityImage";
 import SizeSelectionModal from "./SizeSelectionModal";
 import HelmetNumberingModal from "./HelmetNumberingModal";
+import ImageHoverPreview from "./ImageHoverPreview";
 
 interface ProductCardProps {
   product: {
@@ -168,11 +168,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
       }}
     >
       <div className="relative">
-        <SimpleImageCarousel
-          images={getCarouselImages()}
-          productName={product.name}
-          className="h-64"
-          showThumbnails={false}
+        <ImageHoverPreview
+          src={getBestImageForCard()}
+          alt={product.name}
+          className="h-64 w-full"
+          previewSize={250}
         />
         
         {/* Badges */}
