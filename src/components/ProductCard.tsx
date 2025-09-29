@@ -49,6 +49,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
 
   const handleAddToCart = async () => {
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+
     // Check if product has helmet_numbers and quantity > 1
     if (product.helmet_numbers && product.helmet_numbers.length > 0 && quantity > 1) {
       setShowHelmetNumberingModal(true);
@@ -66,6 +72,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   const handleSizeSelection = async (selectedSizes: number[]) => {
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+
     setIsAdding(true);
     try {
       await addMultipleToCart(product.id, quantity, selectedSizes);
@@ -76,6 +88,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   const handleHelmetNumberingSelection = async (selectedSizes: number[]) => {
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+
     setIsAdding(true);
     try {
       await addMultipleToCart(product.id, quantity, selectedSizes);

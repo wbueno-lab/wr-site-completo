@@ -164,7 +164,13 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
   } = useProductDetail(id);
 
   const handleAddToCart = async () => {
-    if (!product || !user) return;
+    if (!product) return;
+    
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
 
     // Check if product has helmet_numbers and quantity > 1
     if (product.helmet_numbers && product.helmet_numbers.length > 0 && quantity > 1) {
@@ -206,6 +212,12 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
   const handleSizeSelection = async (selectedSizes: number[]) => {
     if (!product) return;
     
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+    
     setIsAdding(true);
     try {
       await addMultipleToCart(product.id, quantity, selectedSizes);
@@ -223,6 +235,12 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = () => {
 
   const handleHelmetNumberingSelection = async (selectedSizes: number[]) => {
     if (!product) return;
+    
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
     
     setIsAdding(true);
     try {

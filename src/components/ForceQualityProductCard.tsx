@@ -44,6 +44,12 @@ const ForceQualityProductCard = ({ product }: ForceQualityProductCardProps) => {
   const [showQuickView, setShowQuickView] = useState(false);
 
   const handleAddToCart = async () => {
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+
     setIsAdding(true);
     try {
       await addToCart(product.id);

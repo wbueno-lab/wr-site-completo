@@ -172,6 +172,12 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
   const handleAddToCart = async () => {
     if (!product) return;
     
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+    
     // Check if product has helmet_numbers and quantity > 1
     if (product.helmet_numbers && product.helmet_numbers.length > 0 && quantity > 1) {
       setShowHelmetNumberingModal(true);
@@ -196,6 +202,12 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
   const handleSizeSelection = async (selectedSizes: number[]) => {
     if (!product) return;
     
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
+    
     try {
       await addMultipleToCart(product.id, quantity, selectedSizes);
       setShowSizeModal(false);
@@ -210,6 +222,12 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
 
   const handleHelmetNumberingSelection = async (selectedSizes: number[]) => {
     if (!product) return;
+    
+    // Verificar se o usuário está logado
+    if (!user) {
+      navigate('/auth?tab=login');
+      return;
+    }
     
     try {
       await addMultipleToCart(product.id, quantity, selectedSizes);

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import wrLogo from "@/assets/wr-logo-modern.png";
+import wrLogo from "@/assets/LOGOTIPO-PRINCIPAL-PDF.png";
 import { useAuth } from "@/contexts/UnifiedAuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";

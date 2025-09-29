@@ -78,9 +78,30 @@ const App = () => {
                           } 
                         />
                         <Route path="/contato" element={<ContactPage />} />
-                        <Route path="/checkout/success" element={<CheckoutSuccess />} />
-                        <Route path="/checkout/failure" element={<CheckoutFailure />} />
-                        <Route path="/checkout/pending" element={<CheckoutPending />} />
+                        <Route 
+                          path="/checkout/success" 
+                          element={
+                            <ProtectedRoute>
+                              <CheckoutSuccess />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/checkout/failure" 
+                          element={
+                            <ProtectedRoute>
+                              <CheckoutFailure />
+                            </ProtectedRoute>
+                          } 
+                        />
+                        <Route 
+                          path="/checkout/pending" 
+                          element={
+                            <ProtectedRoute>
+                              <CheckoutPending />
+                            </ProtectedRoute>
+                          } 
+                        />
                         <Route path="/logout-test" element={<LogoutTestPage />} />
                         <Route path="/auth-diagnostic" element={<AuthDiagnosticPage />} />
                         <Route path="/admin-diagnostic" element={<AdminAccessDiagnosticPage />} />
