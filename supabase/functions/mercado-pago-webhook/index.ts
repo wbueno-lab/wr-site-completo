@@ -5,6 +5,122 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const MERCADO_PAGO_ACCESS_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
 const MERCADO_PAGO_API_URL = 'https://api.mercadopago.com/v1/payments';
 
+// Função auxiliar para processar pagamento em background
+async function processPayment(paymentId: string) {
+  try {
+    console.log('💳 Processando pagamento:', paymentId);
+
+    // Buscar dados completos do pagamento com timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const paymentResponse = await fetch(`${MERCADO_PAGO_API_URL}/${paymentId}`, {
+      headers: {
+        'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!paymentResponse.ok) {
+      console.error('❌ Erro ao buscar pagamento:', paymentResponse.status);
+      return;
+    }
+
+    const paymentData = await paymentResponse.json();
+
+    console.log('📦 Dados do pagamento:', {
+      id: paymentData.id,
+      status: paymentData.status,
+      external_reference: paymentData.external_reference
+    });
+
+    // Atualizar pedido no Supabase
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Buscar pedido pela referência externa (Mercado Pago ID)
+    const { data: orders, error: searchError } = await supabaseClient
+      .from('orders')
+      .select('*')
+      .eq('payment_details->>mercado_pago_id', paymentData.id.toString())
+      .limit(1);
+
+    if (searchError) {
+      console.error('❌ Erro ao buscar pedido:', searchError);
+      return;
+    }
+
+    if (!orders || orders.length === 0) {
+      console.warn('⚠️ Pedido não encontrado para o pagamento:', paymentData.id);
+      return;
+    }
+
+    const order = orders[0];
+
+    // Mapear status do Mercado Pago para status interno
+    let orderStatus = order.status;
+    let paymentStatus = order.payment_status;
+
+    switch (paymentData.status) {
+      case 'approved':
+        orderStatus = 'processing';
+        paymentStatus = 'paid';
+        break;
+      case 'rejected':
+      case 'cancelled':
+        orderStatus = 'cancelled';
+        paymentStatus = 'failed';
+        break;
+      case 'refunded':
+      case 'charged_back':
+        orderStatus = 'cancelled';
+        paymentStatus = 'refunded';
+        break;
+      case 'pending':
+      case 'in_process':
+      case 'in_mediation':
+      default:
+        orderStatus = 'pending';
+        paymentStatus = 'pending';
+    }
+
+    // Atualizar pedido
+    const { error: updateError } = await supabaseClient
+      .from('orders')
+      .update({
+        status: orderStatus,
+        payment_status: paymentStatus,
+        payment_details: {
+          ...order.payment_details,
+          mercado_pago_id: paymentData.id,
+          status: paymentData.status,
+          status_detail: paymentData.status_detail,
+          last_update: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', order.id);
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar pedido:', updateError);
+      return;
+    }
+
+    console.log('✅ Pedido atualizado:', {
+      order_id: order.id,
+      status: orderStatus,
+      payment_status: paymentStatus
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erro ao processar pagamento:', error);
+  }
+}
+
 serve(async (req) => {
   try {
     console.log('📨 Webhook recebido do Mercado Pago');
@@ -16,122 +132,28 @@ serve(async (req) => {
     // Mercado Pago envia notificações de diferentes tipos
     const { type, data } = body;
 
-    // Processar apenas notificações de pagamento
-    if (type === 'payment') {
+    // IMPORTANTE: Responder imediatamente ao Mercado Pago
+    // O processamento acontecerá em segundo plano
+    if (type === 'payment' && data?.id) {
       const paymentId = data.id;
       
-      console.log('💳 Processando notificação de pagamento:', paymentId);
-
-      // Buscar dados completos do pagamento
-      const paymentResponse = await fetch(`${MERCADO_PAGO_API_URL}/${paymentId}`, {
-        headers: {
-          'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`
-        }
+      // Processar pagamento em background (não bloqueia a resposta)
+      processPayment(paymentId).catch(error => {
+        console.error('❌ Erro no processamento background:', error);
       });
 
-      const paymentData = await paymentResponse.json();
-
-      console.log('📦 Dados do pagamento:', {
-        id: paymentData.id,
-        status: paymentData.status,
-        external_reference: paymentData.external_reference
-      });
-
-      // Atualizar pedido no Supabase
-      const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      );
-
-      // Buscar pedido pela referência externa (Mercado Pago ID)
-      const { data: orders, error: searchError } = await supabaseClient
-        .from('orders')
-        .select('*')
-        .eq('payment_details->>mercado_pago_id', paymentData.id.toString())
-        .limit(1);
-
-      if (searchError) {
-        console.error('❌ Erro ao buscar pedido:', searchError);
-        throw searchError;
-      }
-
-      if (!orders || orders.length === 0) {
-        console.warn('⚠️ Pedido não encontrado para o pagamento:', paymentData.id);
-        
-        // Retornar 200 para o Mercado Pago não reenviar
-        return new Response(
-          JSON.stringify({ received: true, warning: 'Order not found' }),
-          { status: 200 }
-        );
-      }
-
-      const order = orders[0];
-
-      // Mapear status do Mercado Pago para status interno
-      let orderStatus = order.status;
-      let paymentStatus = order.payment_status;
-
-      switch (paymentData.status) {
-        case 'approved':
-          orderStatus = 'processing';
-          paymentStatus = 'paid';
-          break;
-        case 'rejected':
-        case 'cancelled':
-          orderStatus = 'cancelled';
-          paymentStatus = 'failed';
-          break;
-        case 'refunded':
-        case 'charged_back':
-          orderStatus = 'cancelled';
-          paymentStatus = 'refunded';
-          break;
-        case 'pending':
-        case 'in_process':
-        case 'in_mediation':
-        default:
-          orderStatus = 'pending';
-          paymentStatus = 'pending';
-      }
-
-      // Atualizar pedido
-      const { error: updateError } = await supabaseClient
-        .from('orders')
-        .update({
-          status: orderStatus,
-          payment_status: paymentStatus,
-          payment_details: {
-            ...order.payment_details,
-            mercado_pago_id: paymentData.id,
-            status: paymentData.status,
-            status_detail: paymentData.status_detail,
-            last_update: new Date().toISOString()
-          },
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar pedido:', updateError);
-        throw updateError;
-      }
-
-      console.log('✅ Pedido atualizado:', {
-        order_id: order.id,
-        status: orderStatus,
-        payment_status: paymentStatus
-      });
-
-      // TODO: Enviar email de notificação ao cliente
-      // TODO: Atualizar estoque se o pagamento foi aprovado
-
+      // Responder IMEDIATAMENTE para o Mercado Pago
       return new Response(
         JSON.stringify({ 
-          received: true, 
-          order_id: order.id,
-          status: orderStatus 
+          received: true,
+          payment_id: paymentId 
         }),
-        { status: 200 }
+        { 
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
     }
 
@@ -140,7 +162,12 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ received: true, type }),
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     );
 
   } catch (error: any) {
@@ -152,7 +179,12 @@ serve(async (req) => {
         received: true, 
         error: error.message 
       }),
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     );
   }
 });
