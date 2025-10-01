@@ -449,10 +449,10 @@ const UserMessagesCenter = () => {
 
       {/* Modal de detalhes da mensagem */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="user-message-detail-description">
           <DialogHeader>
             <DialogTitle>Detalhes da Mensagem</DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="user-message-detail-description">
               Visualize os detalhes da sua mensagem de contato
             </DialogDescription>
           </DialogHeader>

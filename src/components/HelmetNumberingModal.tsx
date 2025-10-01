@@ -73,13 +73,13 @@ const HelmetNumberingModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="helmet-numbering-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Numeração dos Capacetes
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="helmet-numbering-description">
             Selecione o tamanho para cada peça do capacete
           </DialogDescription>
         </DialogHeader>

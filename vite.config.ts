@@ -30,8 +30,8 @@ export default defineConfig(({ mode }) => ({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      // CSP para permitir conexões WebSocket do Supabase
-      'Content-Security-Policy': "connect-src 'self' https://*.supabase.co https://api.supabase.com https://api.mercadopago.com https://viacep.com.br wss://*.supabase.co ws://localhost:* wss://localhost:8080 http://localhost:8080 https://httpbin.org https://google.com https://github.com https://dns.google; script-src 'self' 'unsafe-inline' 'unsafe-eval';",
+      // CSP para permitir conexões WebSocket do Supabase, API dos Correios, Mercado Pago e Google Fonts
+      'Content-Security-Policy': "default-src 'self'; connect-src 'self' https://*.supabase.co https://api.supabase.com https://api.mercadopago.com https://viacep.com.br https://ws.correios.com.br http://ws.correios.com.br https://*.correios.com.br http://*.correios.com.br wss://*.supabase.co ws://localhost:* wss://localhost:8080 http://localhost:8080; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://secure.mlstatic.com; img-src 'self' data: blob: https: http:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://sdk.mercadopago.com; font-src 'self' https://fonts.gstatic.com data:; frame-src 'self' https://sdk.mercadopago.com https://secure.mlstatic.com;",
     },
     // Configurações de CORS
     cors: {

@@ -183,3 +183,4 @@ SELECT
 4. **Considere otimizações adicionais** se necessário
 
 Esta solução deve resolver **TODOS** os avisos de performance RLS restantes! 🎯
+

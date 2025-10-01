@@ -1,211 +1,160 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Edge Function para receber webhooks do Mercado Pago
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// Interface para dados do pagamento
-interface PaymentData {
-  id: string;
-  status: string;
-  status_detail: string;
-  transaction_amount: number;
-  currency_id: string;
-  description: string;
-  payment_method_id: string;
-  payment_type_id: string;
-  date_approved?: string;
-  date_created: string;
-  date_last_updated: string;
-  external_reference?: string;
-  payer: {
-    email: string;
-    identification: {
-      type: string;
-      number: string;
-    };
-    phone: {
-      area_code: string;
-      number: string;
-    };
-    first_name: string;
-    last_name: string;
-  };
-}
+const MERCADO_PAGO_ACCESS_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+const MERCADO_PAGO_API_URL = 'https://api.mercadopago.com/v1/payments';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
   try {
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    console.log('📨 Webhook recebido do Mercado Pago');
 
-    // Get the request body
-    const body = await req.json()
+    const body = await req.json();
     
-    console.log('Webhook received:', JSON.stringify(body, null, 2))
+    console.log('🔍 Dados do webhook:', JSON.stringify(body, null, 2));
 
-    // Extract payment information from webhook
-    const { type, data } = body
+    // Mercado Pago envia notificações de diferentes tipos
+    const { type, data } = body;
 
+    // Processar apenas notificações de pagamento
     if (type === 'payment') {
-      const paymentId = data.id
+      const paymentId = data.id;
       
-      // Fetch payment details from Mercado Pago
-      const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN')
-      if (!accessToken) {
-        throw new Error('MERCADO_PAGO_ACCESS_TOKEN not configured')
-      }
+      console.log('💳 Processando notificação de pagamento:', paymentId);
 
-      const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      // Buscar dados completos do pagamento
+      const paymentResponse = await fetch(`${MERCADO_PAGO_API_URL}/${paymentId}`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${MERCADO_PAGO_ACCESS_TOKEN}`
         }
-      })
+      });
 
-      if (!paymentResponse.ok) {
-        throw new Error(`Failed to fetch payment details: ${paymentResponse.statusText}`)
+      const paymentData = await paymentResponse.json();
+
+      console.log('📦 Dados do pagamento:', {
+        id: paymentData.id,
+        status: paymentData.status,
+        external_reference: paymentData.external_reference
+      });
+
+      // Atualizar pedido no Supabase
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      // Buscar pedido pela referência externa (Mercado Pago ID)
+      const { data: orders, error: searchError } = await supabaseClient
+        .from('orders')
+        .select('*')
+        .eq('payment_details->>mercado_pago_id', paymentData.id.toString())
+        .limit(1);
+
+      if (searchError) {
+        console.error('❌ Erro ao buscar pedido:', searchError);
+        throw searchError;
       }
 
-      const payment: PaymentData = await paymentResponse.json()
-      
-      console.log('Payment details:', JSON.stringify(payment, null, 2))
-
-      // Update order status based on payment status
-      const orderStatus = mapPaymentStatusToOrderStatus(payment.status)
-      
-      // Buscar o pedido pelo external_reference (ID do pedido)
-      const orderId = payment.external_reference
-      if (!orderId) {
-        throw new Error('External reference not found in payment data')
+      if (!orders || orders.length === 0) {
+        console.warn('⚠️ Pedido não encontrado para o pagamento:', paymentData.id);
+        
+        // Retornar 200 para o Mercado Pago não reenviar
+        return new Response(
+          JSON.stringify({ received: true, warning: 'Order not found' }),
+          { status: 200 }
+        );
       }
 
+      const order = orders[0];
+
+      // Mapear status do Mercado Pago para status interno
+      let orderStatus = order.status;
+      let paymentStatus = order.payment_status;
+
+      switch (paymentData.status) {
+        case 'approved':
+          orderStatus = 'processing';
+          paymentStatus = 'paid';
+          break;
+        case 'rejected':
+        case 'cancelled':
+          orderStatus = 'cancelled';
+          paymentStatus = 'failed';
+          break;
+        case 'refunded':
+        case 'charged_back':
+          orderStatus = 'cancelled';
+          paymentStatus = 'refunded';
+          break;
+        case 'pending':
+        case 'in_process':
+        case 'in_mediation':
+        default:
+          orderStatus = 'pending';
+          paymentStatus = 'pending';
+      }
+
+      // Atualizar pedido
       const { error: updateError } = await supabaseClient
         .from('orders')
-        .update({ 
+        .update({
           status: orderStatus,
-          payment_status: payment.status,
-          payment_details: payment,
-          payment_id: paymentId,
+          payment_status: paymentStatus,
+          payment_details: {
+            ...order.payment_details,
+            mercado_pago_id: paymentData.id,
+            status: paymentData.status,
+            status_detail: paymentData.status_detail,
+            last_update: new Date().toISOString()
+          },
           updated_at: new Date().toISOString()
         })
-        .eq('id', orderId)
+        .eq('id', order.id);
 
       if (updateError) {
-        console.error('Error updating order:', updateError)
-        throw new Error(`Failed to update order: ${updateError.message}`)
+        console.error('❌ Erro ao atualizar pedido:', updateError);
+        throw updateError;
       }
 
-      // If payment is approved, clear the cart and send notification
-      if (payment.status === 'approved') {
-        // Get the order to find the user
-        const { data: order, error: orderError } = await supabaseClient
-          .from('orders')
-          .select('user_id, customer_email, customer_name, total_amount')
-          .eq('id', orderId)
-          .single()
+      console.log('✅ Pedido atualizado:', {
+        order_id: order.id,
+        status: orderStatus,
+        payment_status: paymentStatus
+      });
 
-        if (!orderError && order?.user_id) {
-          // Clear user's cart
-          await supabaseClient
-            .from('cart_items')
-            .delete()
-            .eq('user_id', order.user_id)
+      // TODO: Enviar email de notificação ao cliente
+      // TODO: Atualizar estoque se o pagamento foi aprovado
 
-          // Send notification to user
-          await sendPaymentNotification(order, payment)
-        }
-
-        // Send notification to admin about new paid order
-        await sendAdminNotification(order, payment)
-      }
-
-      console.log(`Order updated successfully. Payment ID: ${paymentId}, Order ID: ${orderId}, Status: ${orderStatus}`)
+      return new Response(
+        JSON.stringify({ 
+          received: true, 
+          order_id: order.id,
+          status: orderStatus 
+        }),
+        { status: 200 }
+      );
     }
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'Webhook processed successfully' }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    )
-
-  } catch (error) {
-    console.error('Webhook error:', error)
+    // Outros tipos de notificação
+    console.log('ℹ️ Tipo de notificação não processado:', type);
     
+    return new Response(
+      JSON.stringify({ received: true, type }),
+      { status: 200 }
+    );
+
+  } catch (error: any) {
+    console.error('❌ Erro ao processar webhook:', error);
+    
+    // Retornar 200 mesmo em caso de erro para o Mercado Pago não reenviar indefinidamente
     return new Response(
       JSON.stringify({ 
-        success: false, 
+        received: true, 
         error: error.message 
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    )
+      { status: 200 }
+    );
   }
-})
+});
 
-// Função para enviar notificação de pagamento
-async function sendPaymentNotification(order: any, payment: PaymentData) {
-  try {
-    // Aqui você pode implementar envio de email, push notification, etc.
-    console.log(`Payment approved for order ${order.id}. Customer: ${order.customer_name} (${order.customer_email}). Amount: R$ ${order.total_amount}`)
-    
-    // Exemplo: Salvar notificação no banco
-    // await supabaseClient
-    //   .from('notifications')
-    //   .insert({
-    //     user_id: order.user_id,
-    //     type: 'payment_approved',
-    //     title: 'Pagamento Aprovado!',
-    //     message: `Seu pagamento de R$ ${order.total_amount} foi aprovado.`,
-    //     data: { order_id: order.id, payment_id: payment.id }
-    //   })
-  } catch (error) {
-    console.error('Error sending payment notification:', error)
-  }
-}
-
-// Função para enviar notificação para o admin
-async function sendAdminNotification(order: any, payment: PaymentData) {
-  try {
-    console.log(`NEW PAID ORDER: #${order.id} - Customer: ${order.customer_name} (${order.customer_email}) - Amount: R$ ${order.total_amount} - Payment ID: ${payment.id}`)
-    
-    // Aqui você pode implementar notificação para o admin via email, webhook, etc.
-    // Exemplo: Enviar email para o admin
-    // await sendAdminEmail({
-    //   subject: `Novo Pedido Pago - #${order.id}`,
-    //   body: `Cliente: ${order.customer_name}\nEmail: ${order.customer_email}\nValor: R$ ${order.total_amount}\nMétodo: ${payment.payment_method_id}`
-    // })
-  } catch (error) {
-    console.error('Error sending admin notification:', error)
-  }
-}
-
-function mapPaymentStatusToOrderStatus(paymentStatus: string): string {
-  const statusMap: Record<string, string> = {
-    'pending': 'pending',
-    'approved': 'approved',
-    'authorized': 'approved',
-    'in_process': 'processing',
-    'in_mediation': 'processing',
-    'rejected': 'rejected',
-    'cancelled': 'cancelled',
-    'refunded': 'refunded',
-    'charged_back': 'charged_back'
-  }
-
-  return statusMap[paymentStatus] || 'pending'
-}
 

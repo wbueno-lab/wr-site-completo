@@ -30,29 +30,31 @@ interface ShippingAddressData {
 }
 
 interface ShippingAddressFormProps {
-  onNext: (addressData: ShippingAddressData) => void;
-  onBack: () => void;
+  onSubmit: (addressData: ShippingAddressData) => void;
+  initialData?: ShippingAddressData | null;
   isLoading?: boolean;
 }
 
 const ShippingAddressForm = ({ 
-  onNext, 
-  onBack, 
+  onSubmit, 
+  initialData,
   isLoading = false 
 }: ShippingAddressFormProps) => {
   const { toast } = useToast();
-  const [formData, setFormData] = useState<ShippingAddressData>({
-    fullName: '',
-    email: '',
-    phone: '',
-    cep: '',
-    street: '',
-    number: '',
-    complement: '',
-    neighborhood: '',
-    city: '',
-    state: ''
-  });
+  const [formData, setFormData] = useState<ShippingAddressData>(
+    initialData || {
+      fullName: '',
+      email: '',
+      phone: '',
+      cep: '',
+      street: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: ''
+    }
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const states = [
@@ -150,11 +152,11 @@ const ShippingAddressForm = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
-      onNext(formData);
+      onSubmit(formData);
     } else {
       toast({
         title: "Erro de Validação",
@@ -177,7 +179,7 @@ const ShippingAddressForm = ({
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleFormSubmit} className="space-y-6">
           {/* Dados Pessoais */}
           <div className="space-y-4">
             <h3 className="font-medium flex items-center gap-2">
@@ -376,20 +378,12 @@ const ShippingAddressForm = ({
             </div>
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onBack}
-              className="flex-1"
-            >
-              Voltar
-            </Button>
+          {/* Botão de Envio */}
+          <div className="pt-4">
             <Button
               type="submit"
               disabled={isLoading}
-              className="flex-1"
+              className="w-full"
             >
               {isLoading ? (
                 <>
@@ -399,7 +393,7 @@ const ShippingAddressForm = ({
               ) : (
                 <>
                   <MapPin className="h-4 w-4 mr-2" />
-                  Continuar para Pagamento
+                  Continuar
                 </>
               )}
             </Button>

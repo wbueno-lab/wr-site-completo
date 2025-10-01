@@ -211,3 +211,4 @@ ORDER BY idx_scan DESC;
 4. **Reverta se necessário** e ajuste gradualmente
 
 Esta solução deve resolver a maioria dos avisos de performance RLS, tornando sua aplicação muito mais eficiente! 🚀
+

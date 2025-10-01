@@ -532,10 +532,10 @@ const ContactMessagesManager = () => {
 
       {/* Modal de detalhes da mensagem */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="contact-message-detail-description">
           <DialogHeader>
             <DialogTitle>Detalhes da Mensagem</DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="contact-message-detail-description">
               Visualize e gerencie os detalhes da mensagem de contato
             </DialogDescription>
           </DialogHeader>

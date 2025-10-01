@@ -178,8 +178,7 @@ export const SimpleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       // Debounce: ignorar eventos duplicados em menos de 500ms
       if (eventKey === lastAuthEvent && (currentTime - lastAuthTime) < 500) {
-        console.log('[Auth] Ignorando evento duplicado (debounce)');
-        return;
+        return; // Silencioso
       }
 
       // Adicionar evento à fila para processamento
@@ -188,7 +187,10 @@ export const SimpleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setLastAuthEvent(eventKey);
       setLastAuthTime(currentTime);
 
-      console.log('[Auth] Estado alterado:', event, session?.user?.email || 'sem usuário');
+      // Log apenas para eventos importantes (não TOKEN_REFRESHED)
+      if (event !== 'TOKEN_REFRESHED' && ENV.IS_DEVELOPMENT) {
+        console.log('[Auth] Estado alterado:', event, session?.user?.email || 'sem usuário');
+      }
       
       // Evitar processamento duplicado se o estado não mudou realmente
       const isStateUnchanged = (
@@ -197,12 +199,13 @@ export const SimpleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       );
       
       if (isStateUnchanged) {
-        console.log('[Auth] Ignorando evento duplicado (estado inalterado)');
-        return;
+        return; // Silencioso
       }
       
       if (event === 'SIGNED_OUT') {
-        console.log('[Auth] Processando logout via listener');
+        if (ENV.IS_DEVELOPMENT) {
+          console.log('[Auth] Processando logout');
+        }
         setSession(null);
         setUser(null);
         setProfile(null);

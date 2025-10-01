@@ -69,7 +69,10 @@ let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 const createSupabaseClient = () => {
   if (supabaseInstance) return supabaseInstance;
 
-  console.log('🔄 Inicializando cliente Supabase...');
+  // Log apenas em desenvolvimento
+  if (ENV.IS_DEVELOPMENT) {
+    console.log('🔄 Inicializando cliente Supabase...');
+  }
   
   try {
     const client = createClient<Database>(
@@ -82,7 +85,7 @@ const createSupabaseClient = () => {
           autoRefreshToken: true,
           detectSessionInUrl: true,
           flowType: 'pkce',
-          debug: ENV.IS_DEVELOPMENT
+          debug: false // Desabilitar logs verbose de debug
         },
         global: {
           headers: {
@@ -101,7 +104,10 @@ const createSupabaseClient = () => {
       }
     );
 
-    console.log('✅ Cliente Supabase inicializado com sucesso');
+    // Log apenas em desenvolvimento
+    if (ENV.IS_DEVELOPMENT) {
+      console.log('✅ Cliente Supabase inicializado com sucesso');
+    }
     supabaseInstance = client;
     return client;
   } catch (error) {

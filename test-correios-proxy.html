@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Correios Proxy</title>
+</head>
+<body>
+    <h1>Teste da Edge Function Correios Proxy</h1>
+    <button onclick="testProxy()">Testar Proxy</button>
+    <div id="result"></div>
+
+    <script>
+        async function testProxy() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testando...';
+
+            try {
+                const response = await fetch('https://fflomlvtgaqbzrjnvqaz.supabase.co/functions/v1/correios-proxy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmbG9tbHZ0Z2FxYnpyam52cWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NjI2MjcsImV4cCI6MjA3MzEzODYyN30.AjI-ZeoLswTl9D7EsjW1y2vZoctX0CSDI2B_FVXKkd4'
+                    },
+                    body: JSON.stringify({
+                        params: {
+                            sCepOrigem: '01310-100',
+                            sCepDestino: '20040-020',
+                            nVlPeso: '1',
+                            nCdFormato: '1',
+                            nVlComprimento: '20',
+                            nVlAltura: '10',
+                            nVlLargura: '15',
+                            nCdServico: '04014,04510'
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `Erro: ${response.status} - ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `Erro: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
+
+

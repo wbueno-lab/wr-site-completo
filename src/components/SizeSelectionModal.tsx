@@ -74,13 +74,13 @@ const SizeSelectionModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="size-selection-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Seleção de Tamanhos
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="size-selection-description">
             Selecione os tamanhos desejados para adicionar ao carrinho
           </DialogDescription>
         </DialogHeader>

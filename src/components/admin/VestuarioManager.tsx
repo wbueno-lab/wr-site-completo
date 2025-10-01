@@ -236,10 +236,10 @@ const VestuarioManager = ({ products, categories, brands, toast }: VestuarioMana
                   Novo Item
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl bg-brand-dark-light border-gray-700 max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl bg-brand-dark-light border-gray-700 max-h-[90vh] overflow-y-auto" aria-describedby="create-vestuario-description">
                 <DialogHeader>
                   <DialogTitle className="text-white">Criar Novo Item de Vestuário</DialogTitle>
-                  <DialogDescription className="text-gray-400">
+                  <DialogDescription id="create-vestuario-description" className="text-gray-400">
                     Preencha os dados do novo item de vestuário
                   </DialogDescription>
                 </DialogHeader>

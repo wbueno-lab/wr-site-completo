@@ -530,13 +530,13 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
                 Novo Produto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-7xl max-h-[98vh] overflow-y-auto bg-brand-dark-light border-gray-700">
+            <DialogContent className="max-w-7xl max-h-[98vh] overflow-y-auto bg-brand-dark-light border-gray-700" aria-describedby="create-product-description">
               <DialogHeader>
                 <DialogTitle className="text-white flex items-center gap-2">
                   <Plus className="h-5 w-5 text-brand-green" />
                   Criar Novo Produto
                 </DialogTitle>
-                <DialogDescription className="text-gray-400">
+                <DialogDescription id="create-product-description" className="text-gray-400">
                   Preencha as informações abaixo para adicionar um novo produto ao seu catálogo
                 </DialogDescription>
               </DialogHeader>
@@ -772,13 +772,13 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
       {/* Modal de Edição */}
       {editingProduct && (
         <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
-          <DialogContent className="max-w-7xl max-h-[98vh] overflow-y-auto bg-brand-dark-light border-gray-700">
+          <DialogContent className="max-w-7xl max-h-[98vh] overflow-y-auto bg-brand-dark-light border-gray-700" aria-describedby="edit-product-description">
             <DialogHeader>
               <DialogTitle className="text-white flex items-center gap-2">
                 <Edit className="h-5 w-5 text-brand-green" />
                 Editar Produto
               </DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogDescription id="edit-product-description" className="text-gray-400">
                 Atualize as informações do produto "{editingProduct?.name}"
               </DialogDescription>
             </DialogHeader>
@@ -800,10 +800,10 @@ const ProductManager = ({ products, categories, brands, toast }: ProductManagerP
       {/* Modal de Exclusão */}
       {deletingProduct && (
         <Dialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
-          <DialogContent className="bg-brand-dark-light border-gray-700">
+          <DialogContent className="bg-brand-dark-light border-gray-700" aria-describedby="delete-product-description">
             <DialogHeader>
               <DialogTitle className="text-white">Confirmar Exclusão</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogDescription id="delete-product-description" className="text-gray-400">
                 Tem certeza que deseja excluir o produto <strong>"{deletingProduct.name}"</strong>?
                 Esta ação não pode ser desfeita.
               </DialogDescription>

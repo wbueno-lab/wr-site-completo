@@ -157,7 +157,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="order-detail-description">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold">
@@ -167,7 +167,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <DialogDescription>
+          <DialogDescription id="order-detail-description">
             Detalhes completos do pedido realizado
           </DialogDescription>
         </DialogHeader>

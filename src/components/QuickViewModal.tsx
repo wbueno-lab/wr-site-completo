@@ -274,8 +274,8 @@ const QuickViewModal = ({ productId, isOpen, onClose }: QuickViewModalProps) => 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogDescription className="sr-only">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" aria-describedby="quickview-description">
+        <DialogDescription id="quickview-description" className="sr-only">
           Visualização rápida do produto {product?.name}
         </DialogDescription>
         {loading ? (

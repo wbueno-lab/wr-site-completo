@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste API Correios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #2980b9; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            display: none;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        .service {
+            padding: 10px;
+            margin: 10px 0;
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚚 Teste API dos Correios</h1>
+        <p>Calcule o frete <strong>GRÁTIS</strong> sem precisar de credenciais!</p>
+        
+        <form id="freteForm">
+            <label>CEP de Origem:</label>
+            <input type="text" id="cepOrigem" value="74645010" placeholder="74645010" required>
+            
+            <label>CEP de Destino:</label>
+            <input type="text" id="cepDestino" value="20040020" placeholder="20040020" required>
+            
+            <label>Peso (kg):</label>
+            <input type="number" id="peso" value="1.5" step="0.1" min="0.1" max="30" required>
+            
+            <label>Comprimento (cm):</label>
+            <input type="number" id="comprimento" value="35" min="16" max="105" required>
+            
+            <label>Largura (cm):</label>
+            <input type="number" id="largura" value="30" min="11" max="105" required>
+            
+            <label>Altura (cm):</label>
+            <input type="number" id="altura" value="25" min="2" max="105" required>
+            
+            <button type="submit">Calcular Frete</button>
+        </form>
+        
+        <div id="loading" class="result loading" style="display: none;">
+            ⏳ Consultando API dos Correios...
+        </div>
+        
+        <div id="resultado" class="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('freteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const loading = document.getElementById('loading');
+            const resultado = document.getElementById('resultado');
+            
+            loading.style.display = 'block';
+            resultado.style.display = 'none';
+            
+            try {
+                const cepOrigem = document.getElementById('cepOrigem').value.replace(/\D/g, '');
+                const cepDestino = document.getElementById('cepDestino').value.replace(/\D/g, '');
+                const peso = document.getElementById('peso').value;
+                const comprimento = document.getElementById('comprimento').value;
+                const largura = document.getElementById('largura').value;
+                const altura = document.getElementById('altura').value;
+                
+                // Construir URL da API dos Correios
+                const params = new URLSearchParams({
+                    nCdServico: '04014,04510', // SEDEX e PAC
+                    sCepOrigem: cepOrigem,
+                    sCepDestino: cepDestino,
+                    nVlPeso: peso,
+                    nCdFormato: '1',
+                    nVlComprimento: comprimento,
+                    nVlAltura: altura,
+                    nVlLargura: largura,
+                    nVlDiametro: '0',
+                    sCdMaoPropria: 'N',
+                    nVlValorDeclarado: '0',
+                    sCdAvisoRecebimento: 'N',
+                    StrRetorno: 'xml'
+                });
+                
+                const url = `http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?${params}`;
+                
+                console.log('🔍 Consultando:', url);
+                
+                const response = await fetch(url);
+                const xmlText = await response.text();
+                
+                // Parse XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                const servicos = xmlDoc.getElementsByTagName('cServico');
+                let html = '<h3>✅ Resultado:</h3>';
+                
+                for (let i = 0; i < servicos.length; i++) {
+                    const servico = servicos[i];
+                    const getTag = (tag) => servico.getElementsByTagName(tag)[0]?.textContent || '';
+                    
+                    const erro = getTag('Erro');
+                    const codigo = getTag('Codigo');
+                    const nome = codigo === '04014' ? 'SEDEX' : 'PAC';
+                    
+                    if (erro === '0') {
+                        const valor = getTag('Valor');
+                        const prazo = getTag('PrazoEntrega');
+                        
+                        html += `
+                            <div class="service">
+                                <strong>${nome}</strong><br>
+                                💰 Valor: R$ ${valor}<br>
+                                📅 Prazo: ${prazo} dias úteis
+                            </div>
+                        `;
+                    } else {
+                        const msgErro = getTag('MsgErro');
+                        html += `
+                            <div class="service error">
+                                <strong>${nome}</strong><br>
+                                ❌ Erro: ${msgErro}
+                            </div>
+                        `;
+                    }
+                }
+                
+                loading.style.display = 'none';
+                resultado.innerHTML = html;
+                resultado.className = 'result';
+                resultado.style.display = 'block';
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                resultado.innerHTML = `
+                    <h3>❌ Erro:</h3>
+                    <p>${error.message}</p>
+                    <p><small>Nota: Pode ser bloqueio de CORS. Tente usar a Edge Function do Supabase.</small></p>
+                `;
+                resultado.className = 'result error';
+                resultado.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

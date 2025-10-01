@@ -486,13 +486,13 @@ const MessageManager = ({ messages, toast }: MessageManagerProps) => {
       {/* Modal de Detalhes */}
       {selectedMessage && (
         <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-brand-dark-light border-gray-700">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-brand-dark-light border-gray-700" aria-describedby="message-detail-description">
             <DialogHeader>
               <DialogTitle className="text-white flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
                 Mensagem de {selectedMessage.name}
               </DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogDescription id="message-detail-description" className="text-gray-400">
                 Detalhes completos da mensagem
               </DialogDescription>
             </DialogHeader>
@@ -631,10 +631,10 @@ const MessageManager = ({ messages, toast }: MessageManagerProps) => {
       {/* Modal de Resposta */}
       {replyingTo && (
         <Dialog open={!!replyingTo} onOpenChange={() => setReplyingTo(null)}>
-          <DialogContent className="bg-brand-dark-light border-gray-700">
+          <DialogContent className="bg-brand-dark-light border-gray-700" aria-describedby="reply-message-description">
             <DialogHeader>
               <DialogTitle className="text-white">Responder Mensagem</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogDescription id="reply-message-description" className="text-gray-400">
                 Respondendo para {replyingTo.name} ({replyingTo.email})
               </DialogDescription>
             </DialogHeader>
@@ -681,10 +681,10 @@ const MessageManager = ({ messages, toast }: MessageManagerProps) => {
       {/* Modal de Exclusão */}
       {deletingMessage && (
         <Dialog open={!!deletingMessage} onOpenChange={() => setDeletingMessage(null)}>
-          <DialogContent className="bg-brand-dark-light border-gray-700">
+          <DialogContent className="bg-brand-dark-light border-gray-700" aria-describedby="delete-message-description">
             <DialogHeader>
               <DialogTitle className="text-white">Confirmar Exclusão</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogDescription id="delete-message-description" className="text-gray-400">
                 Tem certeza que deseja excluir esta mensagem?
                 Esta ação não pode ser desfeita.
               </DialogDescription>

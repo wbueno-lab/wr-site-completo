@@ -346,10 +346,10 @@ const JaquetasManager = ({ products, categories, brands, toast }: JaquetasManage
                   Nova Jaqueta
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl bg-brand-dark-light border-gray-700 max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl bg-brand-dark-light border-gray-700 max-h-[90vh] overflow-y-auto" aria-describedby="create-jacket-description">
                 <DialogHeader>
                   <DialogTitle className="text-white">Criar Nova Jaqueta</DialogTitle>
-                  <DialogDescription className="text-gray-400">
+                  <DialogDescription id="create-jacket-description" className="text-gray-400">
                     Preencha os dados da nova jaqueta
                   </DialogDescription>
                 </DialogHeader>
@@ -694,10 +694,10 @@ const JaquetasManager = ({ products, categories, brands, toast }: JaquetasManage
 
       {/* Modal de Edição */}
       <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-        <DialogContent className="max-w-2xl bg-brand-dark-light border-gray-700 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl bg-brand-dark-light border-gray-700 max-h-[90vh] overflow-y-auto" aria-describedby="edit-jacket-description">
           <DialogHeader>
             <DialogTitle className="text-white">Editar Jaqueta</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogDescription id="edit-jacket-description" className="text-gray-400">
               Atualize os dados da jaqueta "{editingProduct?.name}"
             </DialogDescription>
           </DialogHeader>

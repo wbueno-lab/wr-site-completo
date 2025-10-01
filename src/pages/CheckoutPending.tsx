@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, ArrowLeft, ShoppingBag, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { paymentService } from '@/services/paymentService';
+import { mercadoPagoService } from '@/integrations/mercado-pago/mercadoPagoService';
 
 const CheckoutPending = () => {
   const [searchParams] = useSearchParams();
@@ -21,7 +21,7 @@ const CheckoutPending = () => {
 
     setIsChecking(true);
     try {
-      const result = await paymentService.checkPaymentStatus(paymentId);
+      const result = await mercadoPagoService.checkPaymentStatus(paymentId);
       
       if (result.success) {
         toast({

@@ -8,3 +8,18 @@ verify_jwt = false
 
 [functions.update-profile]
 verify_jwt = true
+
+[functions.mercado-pago-get-installments]
+verify_jwt = false
+
+[functions.mercado-pago-process-payment]
+verify_jwt = true
+
+[functions.mercado-pago-check-payment]
+verify_jwt = true
+
+[functions.mercado-pago-webhook]
+verify_jwt = false
+
+[functions.correios-proxy]
+verify_jwt = false

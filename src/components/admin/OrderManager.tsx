@@ -512,12 +512,12 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
       {/* Modal de Detalhes */}
       {selectedOrder && (
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-brand-dark-light border-gray-700">
+          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-brand-dark-light border-gray-700" aria-describedby="order-detail-admin-description">
             <DialogHeader className="pb-6">
               <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-white text-2xl">Detalhes do Pedido #{selectedOrder.id.slice(-8)}</DialogTitle>
-                  <DialogDescription className="text-gray-400 mt-2">
+                  <DialogDescription id="order-detail-admin-description" className="text-gray-400 mt-2">
                     Informações completas do pedido e dados do cliente
                   </DialogDescription>
                 </div>
@@ -852,10 +852,10 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
       {/* Modal de Exclusão */}
       {deletingOrder && (
         <Dialog open={!!deletingOrder} onOpenChange={() => setDeletingOrder(null)}>
-          <DialogContent className="bg-brand-dark-light border-gray-700">
+          <DialogContent className="bg-brand-dark-light border-gray-700" aria-describedby="delete-order-description">
             <DialogHeader>
               <DialogTitle className="text-white">Confirmar Exclusão</DialogTitle>
-              <DialogDescription className="text-gray-400">
+              <DialogDescription id="delete-order-description" className="text-gray-400">
                 Tem certeza que deseja excluir o pedido <strong>#{deletingOrder.id.slice(-8)}</strong>?
                 Esta ação não pode ser desfeita e excluirá todos os itens relacionados.
               </DialogDescription>

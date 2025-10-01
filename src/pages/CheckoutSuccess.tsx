@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { paymentService } from '@/services/paymentService';
+import { mercadoPagoService } from '@/integrations/mercado-pago/mercadoPagoService';
 
 const CheckoutSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -31,11 +31,11 @@ const CheckoutSuccess = () => {
 
       try {
         setIsLoading(true);
-        const result = await paymentService.checkPaymentStatus(paymentId);
+        const result = await mercadoPagoService.checkPaymentStatus(paymentId);
         
         if (result.success) {
           // Buscar dados do pedido
-          const order = await paymentService.getOrder(paymentId);
+          const order = await mercadoPagoService.getOrder(paymentId);
           setOrderData(order);
           
           toast({

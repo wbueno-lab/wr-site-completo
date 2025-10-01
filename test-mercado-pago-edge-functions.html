@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste Edge Functions - Mercado Pago</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      color: #333;
+      margin-top: 0;
+    }
+    
+    h2 {
+      color: #666;
+      font-size: 18px;
+      margin-top: 24px;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 8px;
+    }
+    
+    .input-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    
+    textarea {
+      min-height: 80px;
+      font-family: monospace;
+      resize: vertical;
+    }
+    
+    button {
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #047857;
+    }
+    
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .result {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .result.success {
+      background: #d1fae5;
+      border-color: #059669;
+      color: #065f46;
+    }
+    
+    .result.error {
+      background: #fee2e2;
+      border-color: #dc2626;
+      color: #991b1b;
+    }
+    
+    .result.loading {
+      background: #dbeafe;
+      border-color: #3b82f6;
+      color: #1e40af;
+    }
+    
+    .info {
+      background: #eff6ff;
+      border: 1px solid #3b82f6;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #1e40af;
+    }
+    
+    .warning {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #92400e;
+    }
+    
+    .test-section {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+    
+    .test-section:first-child {
+      border-top: none;
+      padding-top: 0;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Teste de Edge Functions - Mercado Pago</h1>
+    
+    <div class="warning">
+      ⚠️ <strong>Importante:</strong> Configure suas credenciais do Supabase abaixo antes de testar.
+    </div>
+    
+    <div class="input-group">
+      <label for="supabaseUrl">🔗 Supabase URL</label>
+      <input 
+        type="text" 
+        id="supabaseUrl" 
+        placeholder="https://seu-projeto.supabase.co"
+        value="https://fflomlvtgaqbzrjnvqaz.supabase.co"
+      />
+    </div>
+    
+    <div class="input-group">
+      <label for="supabaseKey">🔑 Supabase Anon Key</label>
+      <input 
+        type="password" 
+        id="supabaseKey" 
+        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      />
+    </div>
+  </div>
+
+  <!-- Teste 1: Get Installments -->
+  <div class="container">
+    <div class="test-section">
+      <h2>1. Teste: Buscar Parcelas (Get Installments)</h2>
+      
+      <div class="info">
+        ℹ️ Esta função busca as opções de parcelamento disponíveis para um valor específico.
+      </div>
+      
+      <div class="input-group">
+        <label for="amount">💰 Valor (R$)</label>
+        <input 
+          type="number" 
+          id="amount" 
+          placeholder="1000.00"
+          value="1024.80"
+          step="0.01"
+        />
+      </div>
+      
+      <div class="input-group">
+        <label for="paymentMethodId">💳 Método de Pagamento</label>
+        <input 
+          type="text" 
+          id="paymentMethodId" 
+          placeholder="visa"
+          value="visa"
+        />
+      </div>
+      
+      <button onclick="testGetInstallments()">🚀 Testar Get Installments</button>
+      
+      <div id="result1" class="result" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Teste 2: Check Payment -->
+  <div class="container">
+    <div class="test-section">
+      <h2>2. Teste: Verificar Status do Pagamento (Check Payment)</h2>
+      
+      <div class="info">
+        ℹ️ Esta função verifica o status de um pagamento existente no Mercado Pago.
+      </div>
+      
+      <div class="input-group">
+        <label for="paymentId">🆔 Payment ID</label>
+        <input 
+          type="text" 
+          id="paymentId" 
+          placeholder="123456789"
+        />
+      </div>
+      
+      <button onclick="testCheckPayment()">🚀 Testar Check Payment</button>
+      
+      <div id="result2" class="result" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Teste 3: Conexão Básica -->
+  <div class="container">
+    <div class="test-section">
+      <h2>3. Teste: Conectividade Básica</h2>
+      
+      <div class="info">
+        ℹ️ Testa a conectividade básica com o Supabase e Edge Functions.
+      </div>
+      
+      <button onclick="testConnectivity()">🚀 Testar Conectividade</button>
+      
+      <div id="result3" class="result" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    // Função auxiliar para fazer requisições
+    async function makeRequest(endpoint, body = null) {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+      
+      if (!url || !key) {
+        throw new Error('Configure a URL e a Key do Supabase antes de testar');
+      }
+      
+      const fullUrl = `${url}/functions/v1/${endpoint}`;
+      
+      const options = {
+        method: body ? 'POST' : 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        }
+      };
+      
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+      
+      const response = await fetch(fullUrl, options);
+      const data = await response.json();
+      
+      return {
+        status: response.status,
+        ok: response.ok,
+        data
+      };
+    }
+    
+    // Função para exibir resultado
+    function showResult(elementId, result, isSuccess) {
+      const element = document.getElementById(elementId);
+      element.style.display = 'block';
+      element.className = `result ${isSuccess ? 'success' : 'error'}`;
+      element.textContent = typeof result === 'object' 
+        ? JSON.stringify(result, null, 2) 
+        : result;
+    }
+    
+    // Função para mostrar loading
+    function showLoading(elementId) {
+      const element = document.getElementById(elementId);
+      element.style.display = 'block';
+      element.className = 'result loading';
+      element.textContent = '⏳ Carregando...';
+    }
+    
+    // Teste 1: Get Installments
+    async function testGetInstallments() {
+      const resultId = 'result1';
+      showLoading(resultId);
+      
+      try {
+        const amount = parseFloat(document.getElementById('amount').value);
+        const paymentMethodId = document.getElementById('paymentMethodId').value;
+        
+        console.log('🔍 Testando Get Installments...', { amount, paymentMethodId });
+        
+        const result = await makeRequest('mercado-pago-get-installments', {
+          amount,
+          paymentMethodId
+        });
+        
+        console.log('✅ Resposta recebida:', result);
+        
+        if (result.ok) {
+          showResult(resultId, {
+            status: '✅ Sucesso',
+            statusCode: result.status,
+            data: result.data,
+            parcelas: result.data.installments?.length || 0
+          }, true);
+        } else {
+          showResult(resultId, {
+            status: '❌ Erro',
+            statusCode: result.status,
+            error: result.data
+          }, false);
+        }
+      } catch (error) {
+        console.error('❌ Erro:', error);
+        showResult(resultId, {
+          status: '❌ Erro de Conexão',
+          message: error.message
+        }, false);
+      }
+    }
+    
+    // Teste 2: Check Payment
+    async function testCheckPayment() {
+      const resultId = 'result2';
+      showLoading(resultId);
+      
+      try {
+        const paymentId = document.getElementById('paymentId').value;
+        
+        if (!paymentId) {
+          throw new Error('Informe o Payment ID');
+        }
+        
+        console.log('🔍 Testando Check Payment...', { paymentId });
+        
+        const result = await makeRequest('mercado-pago-check-payment', {
+          paymentId
+        });
+        
+        console.log('✅ Resposta recebida:', result);
+        
+        if (result.ok) {
+          showResult(resultId, {
+            status: '✅ Sucesso',
+            statusCode: result.status,
+            data: result.data
+          }, true);
+        } else {
+          showResult(resultId, {
+            status: '❌ Erro',
+            statusCode: result.status,
+            error: result.data
+          }, false);
+        }
+      } catch (error) {
+        console.error('❌ Erro:', error);
+        showResult(resultId, {
+          status: '❌ Erro de Conexão',
+          message: error.message
+        }, false);
+      }
+    }
+    
+    // Teste 3: Conectividade Básica
+    async function testConnectivity() {
+      const resultId = 'result3';
+      showLoading(resultId);
+      
+      try {
+        const url = document.getElementById('supabaseUrl').value.trim();
+        const key = document.getElementById('supabaseKey').value.trim();
+        
+        if (!url || !key) {
+          throw new Error('Configure a URL e a Key do Supabase');
+        }
+        
+        console.log('🔍 Testando conectividade...');
+        
+        const tests = [];
+        
+        // Teste 1: REST API
+        tests.push({
+          name: 'REST API',
+          test: async () => {
+            const response = await fetch(`${url}/rest/v1/`, {
+              headers: {
+                'apikey': key,
+                'Authorization': `Bearer ${key}`
+              }
+            });
+            return { ok: response.ok, status: response.status };
+          }
+        });
+        
+        // Teste 2: Edge Function mercado-pago-get-installments
+        tests.push({
+          name: 'Edge Function: mercado-pago-get-installments',
+          test: async () => {
+            const response = await fetch(`${url}/functions/v1/mercado-pago-get-installments`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${key}`
+              },
+              body: JSON.stringify({ amount: 100, paymentMethodId: 'visa' })
+            });
+            return { ok: response.ok, status: response.status };
+          }
+        });
+        
+        const results = [];
+        
+        for (const test of tests) {
+          try {
+            const result = await test.test();
+            results.push({
+              test: test.name,
+              status: result.ok ? '✅ OK' : '❌ Falhou',
+              statusCode: result.status
+            });
+          } catch (error) {
+            results.push({
+              test: test.name,
+              status: '❌ Erro',
+              error: error.message
+            });
+          }
+        }
+        
+        const allOk = results.every(r => r.status === '✅ OK');
+        
+        showResult(resultId, {
+          status: allOk ? '✅ Todos os testes passaram' : '⚠️ Alguns testes falharam',
+          tests: results
+        }, allOk);
+        
+      } catch (error) {
+        console.error('❌ Erro:', error);
+        showResult(resultId, {
+          status: '❌ Erro de Conexão',
+          message: error.message
+        }, false);
+      }
+    }
+  </script>
+</body>
+</html>
+

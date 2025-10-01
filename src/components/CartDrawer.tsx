@@ -13,7 +13,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from '@/contexts/UnifiedAuthContext';
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import CheckoutModal from "./CheckoutModal";
+import MercadoPagoCheckoutModal from "./MercadoPagoCheckoutModal";
 
 interface CartDrawerProps {
   children: React.ReactNode;
@@ -219,7 +219,7 @@ const CartDrawer = ({ children }: CartDrawerProps) => {
         </SheetContent>
       </Sheet>
 
-      <CheckoutModal 
+      <MercadoPagoCheckoutModal 
         isOpen={showCheckout} 
         onClose={() => setShowCheckout(false)} 
       />

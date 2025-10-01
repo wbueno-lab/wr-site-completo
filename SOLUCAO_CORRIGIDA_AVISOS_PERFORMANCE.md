@@ -167,3 +167,4 @@ Após executar a migração corrigida:
 4. **Monitore** por alguns dias
 
 Esta solução corrigida deve resolver os avisos de performance sem erros! 🎯
+

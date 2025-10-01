@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste CSP - WR Capacetes</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 2.5em;
+            text-align: center;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        .pending {
+            background: #f59e0b;
+            color: white;
+        }
+        button {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .result {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .instructions {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #10b981;
+        }
+        .instructions h2 {
+            margin-top: 0;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 10px 0;
+        }
+        .warning {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 5px solid #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de CSP e Cache</h1>
+        
+        <div class="instructions">
+            <h2>📋 Instruções Antes de Testar:</h2>
+            <ol>
+                <li><strong>Feche TODAS as abas</strong> do localhost:8080</li>
+                <li><strong>Limpe o cache:</strong> Ctrl + Shift + Delete</li>
+                <li>Marque "Imagens e arquivos em cache"</li>
+                <li>Clique em "Limpar dados"</li>
+                <li><strong>Aguarde 10 segundos</strong></li>
+                <li>Abra uma <strong>NOVA aba</strong></li>
+                <li>Vá para http://localhost:8080</li>
+                <li>Pressione <strong>Ctrl + F5</strong></li>
+            </ol>
+        </div>
+
+        <div class="instructions warning">
+            <h2>⚠️ Se Ainda Houver Erros:</h2>
+            <p><strong>Teste em Modo Anônimo:</strong></p>
+            <ol>
+                <li>Pressione <strong>Ctrl + Shift + N</strong> (Chrome/Edge)</li>
+                <li>Acesse http://localhost:8080</li>
+                <li>Se funcionar = problema é cache!</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>1. Teste ViaCEP <span id="status-viacep" class="status pending">Aguardando</span></h2>
+            <p>Testa se o ViaCEP está permitido no CSP</p>
+            <button onclick="testViaCep()">🧪 Testar ViaCEP</button>
+            <div id="result-viacep" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Teste Supabase <span id="status-supabase" class="status pending">Aguardando</span></h2>
+            <p>Testa se o Supabase está acessível</p>
+            <button onclick="testSupabase()">🧪 Testar Supabase</button>
+            <div id="result-supabase" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Teste AllOrigins <span id="status-allorigins" class="status pending">Aguardando</span></h2>
+            <p>Testa se o proxy AllOrigins está permitido</p>
+            <button onclick="testAllOrigins()">🧪 Testar AllOrigins</button>
+            <div id="result-allorigins" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Verificar CSP no Header</h2>
+            <p>Verifica se o CSP está sendo enviado corretamente</p>
+            <button onclick="checkCSP()">🔍 Verificar CSP</button>
+            <div id="result-csp" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Testar Tudo</h2>
+            <button onclick="testAll()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                🚀 Executar Todos os Testes
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(id, success, message) {
+            const statusEl = document.getElementById(id);
+            statusEl.className = 'status ' + (success ? 'success' : 'error');
+            statusEl.textContent = success ? '✅ Sucesso' : '❌ Falhou';
+        }
+
+        function showResult(id, content) {
+            const resultEl = document.getElementById(id);
+            resultEl.innerHTML = content;
+        }
+
+        async function testViaCep() {
+            const statusId = 'status-viacep';
+            const resultId = 'result-viacep';
+            
+            showResult(resultId, '⏳ Testando ViaCEP...');
+            
+            try {
+                const response = await fetch('https://viacep.com.br/ws/01310100/json/');
+                const data = await response.json();
+                
+                if (data.erro) {
+                    throw new Error('CEP não encontrado');
+                }
+                
+                updateStatus(statusId, true);
+                showResult(resultId, `
+                    ✅ <strong>ViaCEP funcionando!</strong><br>
+                    CEP: ${data.cep}<br>
+                    Endereço: ${data.logradouro}<br>
+                    Bairro: ${data.bairro}<br>
+                    Cidade: ${data.localidade} - ${data.uf}<br>
+                    <br>
+                    <strong>Conclusão:</strong> CSP está permitindo ViaCEP corretamente!
+                `);
+            } catch (error) {
+                updateStatus(statusId, false);
+                showResult(resultId, `
+                    ❌ <strong>Erro ao acessar ViaCEP:</strong><br>
+                    ${error.message}<br>
+                    <br>
+                    <strong>Possível causa:</strong><br>
+                    - Cache do navegador ainda ativo<br>
+                    - CSP não atualizado<br>
+                    <br>
+                    <strong>Solução:</strong><br>
+                    1. Feche TODAS as abas do localhost<br>
+                    2. Limpe o cache (Ctrl+Shift+Delete)<br>
+                    3. Abra em modo anônimo (Ctrl+Shift+N)<br>
+                    4. Teste novamente
+                `);
+            }
+        }
+
+        async function testSupabase() {
+            const statusId = 'status-supabase';
+            const resultId = 'result-supabase';
+            
+            showResult(resultId, '⏳ Testando Supabase...');
+            
+            try {
+                const response = await fetch('https://fflomlvtgaqbzrjnvqaz.supabase.co/rest/v1/', {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmbG9tbHZ0Z2FxYnpyam52cWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NjI2MjcsImV4cCI6MjA3MzEzODYyN30.AjI-ZeoLswTl9D7EsjW1y2vZoctX0CSDI2B_FVXKkd4'
+                    }
+                });
+                
+                updateStatus(statusId, true);
+                showResult(resultId, `
+                    ✅ <strong>Supabase acessível!</strong><br>
+                    Status: ${response.status} ${response.statusText}<br>
+                    <br>
+                    <strong>Conclusão:</strong> CSP está permitindo Supabase corretamente!
+                `);
+            } catch (error) {
+                updateStatus(statusId, false);
+                showResult(resultId, `
+                    ❌ <strong>Erro ao acessar Supabase:</strong><br>
+                    ${error.message}<br>
+                    <br>
+                    <strong>Isso pode ser problema de cache!</strong>
+                `);
+            }
+        }
+
+        async function testAllOrigins() {
+            const statusId = 'status-allorigins';
+            const resultId = 'result-allorigins';
+            
+            showResult(resultId, '⏳ Testando AllOrigins...');
+            
+            try {
+                const url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://httpbin.org/get');
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                updateStatus(statusId, true);
+                showResult(resultId, `
+                    ✅ <strong>AllOrigins funcionando!</strong><br>
+                    Status: ${response.status}<br>
+                    <br>
+                    <strong>Conclusão:</strong> Proxy CORS está permitido no CSP!
+                `);
+            } catch (error) {
+                updateStatus(statusId, false);
+                showResult(resultId, `
+                    ❌ <strong>Erro ao acessar AllOrigins:</strong><br>
+                    ${error.message}<br>
+                    <br>
+                    <strong>Cache do navegador ainda ativo!</strong>
+                `);
+            }
+        }
+
+        async function checkCSP() {
+            const resultId = 'result-csp';
+            
+            showResult(resultId, '⏳ Verificando CSP...');
+            
+            try {
+                const response = await fetch('/');
+                const csp = response.headers.get('content-security-policy');
+                
+                if (!csp) {
+                    showResult(resultId, `
+                        ⚠️ <strong>CSP não encontrado nos headers HTTP</strong><br>
+                        <br>
+                        Isso é normal! O CSP está sendo definido via meta tag no HTML.<br>
+                        <br>
+                        Para verificar se está funcionando:<br>
+                        1. Abra DevTools (F12)<br>
+                        2. Vá para Console<br>
+                        3. Se NÃO houver erros de CSP = está funcionando!<br>
+                        4. Se houver erros "Refused to connect" = cache ativo!
+                    `);
+                } else {
+                    showResult(resultId, `
+                        ✅ <strong>CSP encontrado!</strong><br>
+                        <pre style="white-space: pre-wrap; word-break: break-all;">${csp}</pre>
+                    `);
+                }
+            } catch (error) {
+                showResult(resultId, `❌ Erro: ${error.message}`);
+            }
+        }
+
+        async function testAll() {
+            await testViaCep();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testSupabase();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testAllOrigins();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await checkCSP();
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            console.log('🧪 Página de teste carregada!');
+            console.log('📝 Siga as instruções e clique nos botões para testar');
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Edge Function Correios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.online {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.offline {
+            background: #f44336;
+            color: white;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚚 Teste Edge Function - Correios Proxy</h1>
+        
+        <div class="test-section">
+            <h2>Status da Edge Function</h2>
+            <p>Verificando se a edge function está online e respondendo...</p>
+            <button onclick="testEdgeFunctionStatus()" id="btnStatus">
+                🔍 Verificar Status
+            </button>
+            <div id="statusResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Teste de Cálculo de Frete</h2>
+            <p>Testar cálculo de frete de <strong>Goiânia-GO (74645-010)</strong> para <strong>São Paulo-SP (01310-100)</strong></p>
+            <p>Peso: <strong>1.5 kg</strong> | Serviço: <strong>PAC (04510)</strong></p>
+            <button onclick="testFreteCalculation()" id="btnFrete">
+                📦 Calcular Frete
+            </button>
+            <div id="freteResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Teste Múltiplos Serviços</h2>
+            <p>Testar PAC e SEDEX simultaneamente</p>
+            <button onclick="testMultipleServices()" id="btnMultiple">
+                🚀 Testar PAC + SEDEX
+            </button>
+            <div id="multipleResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fflomlvtgaqbzrjnvqaz.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmbG9tbHZ0Z2FxYnpyam52cWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NjI2MjcsImV4cCI6MjA3MzEzODYyN30.AjI-ZeoLswTl9D7EsjW1y2vZoctX0CSDI2B_FVXKkd4';
+        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/correios-proxy`;
+
+        async function testEdgeFunctionStatus() {
+            const btn = document.getElementById('btnStatus');
+            const resultDiv = document.getElementById('statusResult');
+            
+            btn.disabled = true;
+            btn.innerHTML = '🔄 Verificando...';
+            resultDiv.innerHTML = '<div class="loading"></div>';
+
+            try {
+                const response = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ Edge Function ONLINE
+                            <span class="status online">DISPONÍVEL</span>
+                            
+                            Status: ${response.status}
+                            URL: ${EDGE_FUNCTION_URL}
+                            
+                            A edge function está respondendo corretamente!
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`Status ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ Edge Function OFFLINE
+                        <span class="status offline">INDISPONÍVEL</span>
+                        
+                        Erro: ${error.message}
+                        
+                        ⚠️ A edge function precisa ser deployada!
+                        
+                        Execute:
+                        npx supabase login
+                        npx supabase functions deploy correios-proxy --project-ref fflomlvtgaqbzrjnvqaz
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔍 Verificar Status';
+            }
+        }
+
+        async function testFreteCalculation() {
+            const btn = document.getElementById('btnFrete');
+            const resultDiv = document.getElementById('freteResult');
+            
+            btn.disabled = true;
+            btn.innerHTML = '🔄 Calculando...';
+            resultDiv.innerHTML = '<div class="loading"></div>';
+
+            const params = {
+                sCepOrigem: '74645010',
+                sCepDestino: '01310100',
+                nVlPeso: '1.5',
+                nCdFormato: '1',
+                nVlComprimento: '30',
+                nVlAltura: '20',
+                nVlLargura: '25',
+                nCdServico: '04510' // PAC
+            };
+
+            try {
+                const startTime = Date.now();
+                const response = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({ params })
+                });
+
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ SUCESSO! Frete calculado via API dos Correios
+                            
+                            📦 Serviço: PAC (${data.Codigo})
+                            💰 Valor: R$ ${data.Valor}
+                            📅 Prazo: ${data.PrazoEntrega} dias úteis
+                            ⏱️ Tempo de resposta: ${duration}ms
+                            
+                            Detalhes completos:
+                            ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Erro desconhecido');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ ERRO ao calcular frete
+                        
+                        Erro: ${error.message}
+                        
+                        Possíveis causas:
+                        • Edge function não está deployada
+                        • API dos Correios offline
+                        • Timeout na requisição
+                        • Parâmetros inválidos
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📦 Calcular Frete';
+            }
+        }
+
+        async function testMultipleServices() {
+            const btn = document.getElementById('btnMultiple');
+            const resultDiv = document.getElementById('multipleResult');
+            
+            btn.disabled = true;
+            btn.innerHTML = '🔄 Testando...';
+            resultDiv.innerHTML = '<div class="loading"></div>';
+
+            const services = [
+                { name: 'PAC', code: '04510' },
+                { name: 'SEDEX', code: '04014' }
+            ];
+
+            let results = [];
+
+            for (const service of services) {
+                try {
+                    const response = await fetch(EDGE_FUNCTION_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_ANON_KEY
+                        },
+                        body: JSON.stringify({
+                            params: {
+                                sCepOrigem: '74645010',
+                                sCepDestino: '01310100',
+                                nVlPeso: '1.5',
+                                nCdFormato: '1',
+                                nVlComprimento: '30',
+                                nVlAltura: '20',
+                                nVlLargura: '25',
+                                nCdServico: service.code
+                            }
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        results.push({
+                            name: service.name,
+                            success: true,
+                            price: data.Valor,
+                            days: data.PrazoEntrega
+                        });
+                    } else {
+                        results.push({
+                            name: service.name,
+                            success: false,
+                            error: data.error
+                        });
+                    }
+                } catch (error) {
+                    results.push({
+                        name: service.name,
+                        success: false,
+                        error: error.message
+                    });
+                }
+            }
+
+            const successCount = results.filter(r => r.success).length;
+            const allSuccess = successCount === services.length;
+
+            let html = `<div class="result ${allSuccess ? 'success' : 'error'}">`;
+            
+            if (allSuccess) {
+                html += `✅ TODOS OS SERVIÇOS FUNCIONANDO!\n\n`;
+            } else {
+                html += `⚠️ ALGUNS SERVIÇOS FALHARAM (${successCount}/${services.length})\n\n`;
+            }
+
+            results.forEach(r => {
+                if (r.success) {
+                    html += `✅ ${r.name}: R$ ${r.price} - ${r.days} dias\n`;
+                } else {
+                    html += `❌ ${r.name}: ${r.error}\n`;
+                }
+            });
+
+            html += `</div>`;
+            resultDiv.innerHTML = html;
+
+            btn.disabled = false;
+            btn.innerHTML = '🚀 Testar PAC + SEDEX';
+        }
+
+        // Executar teste de status automaticamente ao carregar
+        window.addEventListener('load', () => {
+            setTimeout(testEdgeFunctionStatus, 500);
+        });
+    </script>
+</body>
+</html>
+
