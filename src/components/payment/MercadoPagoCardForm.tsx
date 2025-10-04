@@ -214,7 +214,7 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
 
       {/* Número do Cartão */}
       <div className="space-y-2">
-        <Label htmlFor="cardNumber">Número do Cartão</Label>
+        <Label htmlFor="cardNumber" className="text-white font-medium">Número do Cartão</Label>
         <div className="relative">
           <Input
             id="cardNumber"
@@ -223,10 +223,11 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
             value={cardNumber}
             onChange={(e) => formatCardNumber(e.target.value)}
             maxLength={19}
+            className="text-white bg-gray-800"
             required
           />
           {cardType && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-600">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-300">
               {cardType}
             </span>
           )}
@@ -235,13 +236,14 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
 
       {/* Nome no Cartão */}
       <div className="space-y-2">
-        <Label htmlFor="cardName">Nome no Cartão</Label>
+        <Label htmlFor="cardName" className="text-white font-medium">Nome no Cartão</Label>
         <Input
           id="cardName"
           type="text"
           placeholder="NOME COMO ESTÁ NO CARTÃO"
           value={cardName}
           onChange={(e) => setCardName(e.target.value.toUpperCase())}
+          className="text-white bg-gray-800"
           required
         />
       </div>
@@ -249,9 +251,9 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
       {/* Validade e CVV */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="expiryMonth">Mês</Label>
+          <Label htmlFor="expiryMonth" className="text-white font-medium">Mês</Label>
           <Select value={expiryMonth} onValueChange={setExpiryMonth} required>
-            <SelectTrigger>
+            <SelectTrigger className="text-white bg-gray-800">
               <SelectValue placeholder="MM" />
             </SelectTrigger>
             <SelectContent>
@@ -265,9 +267,9 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="expiryYear">Ano</Label>
+          <Label htmlFor="expiryYear" className="text-white font-medium">Ano</Label>
           <Select value={expiryYear} onValueChange={setExpiryYear} required>
-            <SelectTrigger>
+            <SelectTrigger className="text-white bg-gray-800">
               <SelectValue placeholder="AA" />
             </SelectTrigger>
             <SelectContent>
@@ -284,7 +286,7 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="cvv">CVV</Label>
+          <Label htmlFor="cvv" className="text-white font-medium">CVV</Label>
           <Input
             id="cvv"
             type="text"
@@ -292,6 +294,7 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
             value={cvv}
             onChange={(e) => formatCVV(e.target.value)}
             maxLength={4}
+            className="text-white bg-gray-800"
             required
           />
         </div>
@@ -299,12 +302,12 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
 
       {/* Parcelas */}
       <div className="space-y-2">
-        <Label htmlFor="installments">Parcelas</Label>
+        <Label htmlFor="installments" className="text-white font-medium">Parcelas</Label>
         <Select
           value={selectedInstallments.toString()}
           onValueChange={(value) => setSelectedInstallments(parseInt(value))}
         >
-          <SelectTrigger>
+          <SelectTrigger className="text-white bg-gray-800">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -319,9 +322,9 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
       </div>
 
       {/* Total */}
-      <div className="bg-gray-50 p-4 rounded-lg">
+      <div className="bg-gray-800 p-4 rounded-lg">
         <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Total a pagar</span>
+          <span className="text-sm text-white font-medium">Total a pagar</span>
           <span className="text-xl font-bold text-brand-green">
             {formatPrice(
               installments.find(i => i.installments === selectedInstallments)?.total_amount || totalAmount
@@ -329,7 +332,7 @@ const MercadoPagoCardForm: React.FC<MercadoPagoCardFormProps> = ({
           </span>
         </div>
         {selectedInstallments > 1 && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-300 mt-1">
             {selectedInstallments}x de {formatPrice(
               (installments.find(i => i.installments === selectedInstallments)?.installment_amount || 0)
             )}

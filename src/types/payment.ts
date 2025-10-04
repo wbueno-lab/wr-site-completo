@@ -121,6 +121,7 @@ export interface OrderData {
   customer_email: string;
   customer_name: string;
   customer_phone: string;
+  customer_cpf?: string; // CPF do cliente (opcional)
   shipping_address: ShippingAddress;
   billing_address?: ShippingAddress;
   notes?: string;
@@ -130,6 +131,7 @@ export interface OrderItem {
   product_id: string;
   product_name: string;
   quantity: number;
+  product_snapshot?: any; // Snapshot completo do produto no momento da compra
   price: number;
   selectedSize?: string;
   weight?: number;

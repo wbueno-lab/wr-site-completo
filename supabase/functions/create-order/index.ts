@@ -146,6 +146,7 @@ serve(async (req) => {
         quantity: item.quantity,
         unit_price: product.price,
         total_price: itemTotal,
+        selected_size: item.selectedSize || item.selected_size || item.helmet_size || null,
         helmet_size: item.helmet_size || null,
         helmet_sizes: item.helmet_sizes || null,
         product_snapshot: {
@@ -176,7 +177,8 @@ serve(async (req) => {
             id: product.brands.id,
             name: product.brands.name,
             country_of_origin: product.brands.country_of_origin
-          } : null
+          } : null,
+          selected_size: item.selectedSize || item.selected_size || item.helmet_size || null
         }
       });
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,8 @@ import {
   User,
   MapPin,
   CreditCard,
-  Calendar
+  Calendar,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,10 +33,90 @@ interface OrderManagerProps {
 
 const OrderManager = ({ orders, toast }: OrderManagerProps) => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [deletingOrder, setDeletingOrder] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+
+  // Debug: Log dos pedidos recebidos
+  console.log('[OrderManager] Pedidos recebidos:', orders?.length, 'pedidos');
+  if (orders && orders.length > 0) {
+    console.log('[OrderManager] Primeiro pedido:', orders[0]);
+    console.log('[OrderManager] Order_items do primeiro pedido:', (orders[0] as any).order_items);
+  }
+
+  // Carregar order_items quando um pedido é selecionado
+  useEffect(() => {
+    const loadOrderItems = async () => {
+      if (!selectedOrder) {
+        setOrderItems([]);
+        return;
+      }
+
+      setLoadingItems(true);
+      console.log('[OrderManager] Carregando itens do pedido:', selectedOrder.id);
+      console.log('[OrderManager] Pedido completo selecionado:', selectedOrder);
+
+      try {
+        // Primeiro, vamos verificar se existem itens para este pedido
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', selectedOrder.id);
+
+        console.log('[OrderManager] Query executada - Resposta:', { itemsData, itemsError });
+
+        if (itemsError) {
+          console.error('[OrderManager] Erro ao carregar itens:', itemsError);
+          toast({
+            title: 'Erro ao carregar itens',
+            description: itemsError.message,
+            variant: 'destructive'
+          });
+          setOrderItems([]);
+        } else if (!itemsData || itemsData.length === 0) {
+          console.warn('[OrderManager] Nenhum item encontrado no banco para o pedido:', selectedOrder.id);
+          
+          // Tentar usar os itens que vieram com o pedido, se existirem
+          if (selectedOrder.order_items && selectedOrder.order_items.length > 0) {
+            console.log('[OrderManager] Usando order_items do pedido selecionado:', selectedOrder.order_items);
+            setOrderItems(selectedOrder.order_items);
+          } else {
+            console.log('[OrderManager] Pedido não tem order_items no objeto');
+            setOrderItems([]);
+          }
+        } else {
+          console.log('[OrderManager] Itens carregados do banco:', itemsData.length, 'itens');
+          
+          // Agora buscar os dados dos produtos
+          const { data: itemsWithProducts, error: productsError } = await supabase
+            .from('order_items')
+            .select(`
+              *,
+              product:products(*)
+            `)
+            .eq('order_id', selectedOrder.id);
+          
+          if (productsError) {
+            console.error('[OrderManager] Erro ao carregar produtos:', productsError);
+            // Usar apenas os itens sem produtos
+            setOrderItems(itemsData);
+          } else {
+            console.log('[OrderManager] Itens com produtos carregados:', itemsWithProducts);
+            setOrderItems(itemsWithProducts || itemsData);
+          }
+        }
+      } catch (error) {
+        console.error('[OrderManager] Erro:', error);
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+
+    loadOrderItems();
+  }, [selectedOrder, toast]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -510,7 +591,11 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
       </div>
 
       {/* Modal de Detalhes */}
-      {selectedOrder && (
+      {selectedOrder && (() => {
+        // Debug: Log do pedido selecionado
+        console.log('[OrderManager] Pedido selecionado:', selectedOrder);
+        console.log('[OrderManager] Order_items do pedido selecionado:', selectedOrder.order_items);
+        return (
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-brand-dark-light border-gray-700" aria-describedby="order-detail-admin-description">
             <DialogHeader className="pb-6">
@@ -653,13 +738,24 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
                       <CardTitle className="text-white text-xl">Itens do Pedido</CardTitle>
                     </div>
                     <Badge className="bg-brand-green/20 text-brand-green border-brand-green/30">
-                      {(selectedOrder as any).order_items?.length || 0} {(selectedOrder as any).order_items?.length === 1 ? 'item' : 'itens'}
+                      {orderItems.length} {orderItems.length === 1 ? 'item' : 'itens'}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {loadingItems ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 text-brand-green animate-spin" />
+                      <span className="ml-3 text-gray-400">Carregando itens...</span>
+                    </div>
+                  ) : orderItems.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Nenhum item encontrado para este pedido</p>
+                    </div>
+                  ) : (
                   <div className="space-y-4">
-                    {(selectedOrder as any).order_items?.map((item: any, index: number) => {
+                    {orderItems.map((item: any, index: number) => {
                       const product = item.product_snapshot || item.product;
                       const productName = product?.name || `Produto ID: ${item.product_id}`;
                       const categoryName = product?.categories?.name || 'N/A';
@@ -766,13 +862,9 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
                           </div>
                         </div>
                       );
-                    }) || (
-                      <div className="text-center py-8">
-                        <Package className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                        <p className="text-gray-400 text-lg">Itens não disponíveis</p>
-                      </div>
-                    )}
+                    })}
                   </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -847,7 +939,8 @@ const OrderManager = ({ orders, toast }: OrderManagerProps) => {
             </div>
           </DialogContent>
         </Dialog>
-      )}
+        );
+      })()}
 
       {/* Modal de Exclusão */}
       {deletingOrder && (

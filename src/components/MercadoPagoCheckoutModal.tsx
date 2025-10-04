@@ -15,9 +15,9 @@ import ShippingAddressForm from './ShippingAddressForm';
 import ShippingCalculator from './checkout/ShippingCalculator';
 import MercadoPagoCardForm from './payment/MercadoPagoCardForm';
 import MercadoPagoPixForm from './payment/MercadoPagoPixForm';
-import MercadoPagoBoletoForm from './payment/MercadoPagoBoletoForm';
 import { supabase } from '@/integrations/supabase/client';
 import { ShippingService, PaymentResult, OrderData } from '@/types/payment';
+import { shippingService } from '@/services/shippingService';
 
 interface ShippingAddressData {
   fullName: string;
@@ -48,7 +48,7 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('address');
   const [shippingAddress, setShippingAddress] = useState<ShippingAddressData | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<ShippingService | null>(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credit_card' | 'pix' | 'boleto'>('credit_card');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credit_card' | 'pix'>('credit_card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [productNames, setProductNames] = useState<Record<string, string>>({});
 
@@ -56,7 +56,11 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
   const subtotal = getCartTotal();
   const shippingCost = selectedShipping?.price || 0;
   const total = subtotal + shippingCost;
-  const totalWeight = items.reduce((acc, item) => acc + (item.quantity * 1.5), 0);
+  // Calcular peso total usando o peso padrão de capacetes (2kg)
+  const totalWeight = items.reduce((acc, item) => {
+    const itemWeight = 2.0; // Peso padrão para capacetes
+    return acc + (item.quantity * itemWeight);
+  }, 0);
 
   // Resetar estado quando modal abre/fecha
   useEffect(() => {
@@ -148,13 +152,37 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
         product_id: item.product_id,
         quantity: item.quantity,
         price: item.product?.price || 0,
+        unit_price: item.product?.price || 0,
         product_name: item.product?.name || productNames[item.product_id] || `Produto ${item.product_id}`,
         selectedSize: item.selectedSize || undefined,
-        weight: 1.5,
+        // Incluir product_snapshot completo para que a Edge Function tenha todos os dados
+        product_snapshot: item.product ? {
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          original_price: item.product.original_price,
+          image_url: item.product.image_url, // ⭐ CRUCIAL: incluir a imagem
+          description: item.product.description,
+          sku: item.product.sku,
+          is_new: item.product.is_new,
+          is_promo: item.product.is_promo,
+          stock_quantity: item.product.stock_quantity,
+          weight: item.product.weight,
+          material: item.product.material,
+          helmet_type: item.product.helmet_type,
+          available_sizes: item.product.available_sizes,
+          helmet_numbers: item.product.helmet_numbers,
+          color_options: item.product.color_options,
+          warranty_period: item.product.warranty_period,
+          country_of_origin: item.product.country_of_origin,
+          gallery: item.product.gallery,
+          selected_size: item.selectedSize
+        } : undefined,
+        weight: 2.0, // Peso padrão para capacetes
         dimensions: {
-          length: 35,
-          width: 30,
-          height: 25
+          length: 27,
+          width: 27,
+          height: 27
         }
       })),
       payment_method: selectedPaymentMethod,
@@ -245,7 +273,7 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
         return (
           <div className="space-y-6">
             {/* Seletor de Método de Pagamento */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setSelectedPaymentMethod('credit_card')}
@@ -255,8 +283,12 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <CreditCard className="h-6 w-6 mx-auto mb-2" />
-                <span className="text-sm font-medium">Cartão</span>
+                <CreditCard className={`h-6 w-6 mx-auto mb-2 ${
+                  selectedPaymentMethod === 'credit_card' ? 'text-gray-700' : 'text-gray-600'
+                }`} />
+                <span className={`text-sm font-medium ${
+                  selectedPaymentMethod === 'credit_card' ? 'text-gray-700' : 'text-gray-600'
+                }`}>Cartão</span>
               </button>
 
               <button
@@ -268,28 +300,14 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <svg className="h-6 w-6 mx-auto mb-2" viewBox="0 0 24 24" fill="currentColor">
+                <svg className={`h-6 w-6 mx-auto mb-2 ${
+                  selectedPaymentMethod === 'pix' ? 'text-gray-700' : 'text-gray-600'
+                }`} viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2L2 7v10l10 5 10-5V7L12 2z"/>
                 </svg>
-                <span className="text-sm font-medium">PIX</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedPaymentMethod('boleto')}
-                className={`p-4 border-2 rounded-lg text-center transition-all ${
-                  selectedPaymentMethod === 'boleto'
-                    ? 'border-brand-green bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <svg className="h-6 w-6 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <rect x="3" y="6" width="18" height="12" rx="2"/>
-                  <line x1="7" y1="10" x2="7" y2="14"/>
-                  <line x1="11" y1="10" x2="11" y2="14"/>
-                  <line x1="15" y1="10" x2="15" y2="14"/>
-                </svg>
-                <span className="text-sm font-medium">Boleto</span>
+                <span className={`text-sm font-medium ${
+                  selectedPaymentMethod === 'pix' ? 'text-gray-700' : 'text-gray-600'
+                }`}>PIX</span>
               </button>
             </div>
             
@@ -312,14 +330,6 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
               />
             )}
             
-            {selectedPaymentMethod === 'boleto' && (
-              <MercadoPagoBoletoForm
-                totalAmount={total}
-                orderData={orderData}
-                onPaymentSuccess={handlePaymentSuccess}
-                onPaymentError={handlePaymentError}
-              />
-            )}
           </div>
         );
 
@@ -421,10 +431,10 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
 
         {/* Resumo do Carrinho */}
         <div className="bg-gray-50 p-4 rounded-lg mb-6">
-          <h4 className="font-semibold mb-2">Resumo do Pedido</h4>
+          <h4 className="font-semibold mb-2 text-gray-900">Resumo do Pedido</h4>
           <div className="space-y-2">
             {items.map((item) => (
-              <div key={`${item.product_id}-${item.selectedSize}`} className="flex justify-between text-sm">
+              <div key={`${item.product_id}-${item.selectedSize}`} className="flex justify-between text-sm text-gray-900">
                 <span>
                   {item.product?.name || productNames[item.product_id] || `Produto ${item.product_id}`}
                   {item.selectedSize && ` (${item.selectedSize})`}
@@ -435,13 +445,13 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
             ))}
             
             <div className="border-t pt-2 mt-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm text-gray-900">
                 <span>Subtotal:</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
               
               {selectedShipping && (
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm text-gray-900">
                   <span>Frete ({selectedShipping.name}):</span>
                   <span>
                     {selectedShipping.price === 0 
@@ -452,7 +462,7 @@ const MercadoPagoCheckoutModal = ({ isOpen, onClose }: MercadoPagoCheckoutModalP
                 </div>
               )}
               
-              <div className="flex justify-between font-semibold">
+              <div className="flex justify-between font-semibold text-gray-900">
                 <span>Total:</span>
                 <span>{formatPrice(total)}</span>
               </div>

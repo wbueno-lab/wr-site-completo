@@ -63,19 +63,6 @@ export const usePaymentMethods = () => {
       updatedAt: new Date().toISOString()
     },
     {
-      id: 'default-boleto',
-      name: 'Boleto Bancário',
-      description: 'Pague com boleto bancário',
-      icon: 'file-text',
-      isActive: true,
-      requiresOnline: false,
-      processingFeePercentage: 0.00,
-      minAmount: 10.00,
-      maxAmount: 5000.00,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
       id: 'default-transfer',
       name: 'Transferência Bancária',
       description: 'Pague via transferência bancária',

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Credenciais dos Correios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background: #0070f3;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #0051cc;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .sucesso {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .erro {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .info {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Teste de Credenciais dos Correios</h1>
+        
+        <div class="info">
+            <strong>⚠️ Este teste verifica:</strong>
+            <ul>
+                <li>Se suas credenciais estão corretas</li>
+                <li>Se a API dos Correios responde</li>
+                <li>Quanto tempo demora</li>
+            </ul>
+        </div>
+
+        <form id="testeForm">
+            <div class="form-group">
+                <label for="codigoEmpresa">Código da Empresa:</label>
+                <input type="text" id="codigoEmpresa" placeholder="Ex: 12345678" required>
+            </div>
+
+            <div class="form-group">
+                <label for="senha">Senha:</label>
+                <input type="password" id="senha" placeholder="Sua senha da API" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cepOrigem">CEP de Origem:</label>
+                <input type="text" id="cepOrigem" value="74645010" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cepDestino">CEP de Destino:</label>
+                <input type="text" id="cepDestino" value="74663580" required>
+            </div>
+
+            <button type="submit" id="btnTestar">🔍 Testar Credenciais</button>
+        </form>
+
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('testeForm');
+        const btnTestar = document.getElementById('btnTestar');
+        const resultado = document.getElementById('resultado');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const codigoEmpresa = document.getElementById('codigoEmpresa').value;
+            const senha = document.getElementById('senha').value;
+            const cepOrigem = document.getElementById('cepOrigem').value.replace(/\D/g, '');
+            const cepDestino = document.getElementById('cepDestino').value.replace(/\D/g, '');
+
+            btnTestar.disabled = true;
+            btnTestar.textContent = '⏳ Testando... (aguarde até 2 minutos)';
+            
+            resultado.className = 'loading';
+            resultado.style.display = 'block';
+            resultado.innerHTML = '⏱️ Consultando API dos Correios com suas credenciais...<br>Tempo decorrido: <span id="timer">0</span>s';
+
+            // Timer
+            const startTime = Date.now();
+            const timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const timerEl = document.getElementById('timer');
+                if (timerEl) timerEl.textContent = elapsed;
+            }, 1000);
+
+            try {
+                // Construir URL da API dos Correios
+                const params = new URLSearchParams({
+                    nCdEmpresa: codigoEmpresa,
+                    sDsSenha: senha,
+                    sCepOrigem: cepOrigem,
+                    sCepDestino: cepDestino,
+                    nVlPeso: '2',
+                    nCdFormato: '1',
+                    nVlComprimento: '27',
+                    nVlAltura: '27',
+                    nVlLargura: '27',
+                    nVlDiametro: '0',
+                    sCdMaoPropria: 'N',
+                    nVlValorDeclarado: '0',
+                    sCdAvisoRecebimento: 'N',
+                    nCdServico: '04669,04162', // PAC e SEDEX Contrato
+                    StrRetorno: 'xml'
+                });
+
+                const url = `http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?${params.toString()}`;
+
+                console.log('🔗 URL da requisição:', url);
+
+                // Fazer requisição com timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                clearInterval(timerInterval);
+
+                const tempoDecorrido = Math.floor((Date.now() - startTime) / 1000);
+                const xmlText = await response.text();
+
+                console.log('📦 Resposta:', xmlText);
+
+                // Parsear XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                const servicos = xmlDoc.getElementsByTagName('cServico');
+                
+                if (servicos.length === 0) {
+                    throw new Error('Nenhum serviço encontrado na resposta');
+                }
+
+                let resultadoHTML = `<strong>✅ API RESPONDEU!</strong><br>`;
+                resultadoHTML += `⏱️ Tempo de resposta: ${tempoDecorrido} segundos<br><br>`;
+
+                let temErro = false;
+
+                for (let i = 0; i < servicos.length; i++) {
+                    const servico = servicos[i];
+                    const erro = servico.getElementsByTagName('Erro')[0]?.textContent;
+                    const msgErro = servico.getElementsByTagName('MsgErro')[0]?.textContent;
+                    const codigo = servico.getElementsByTagName('Codigo')[0]?.textContent;
+                    const valor = servico.getElementsByTagName('Valor')[0]?.textContent;
+                    const prazo = servico.getElementsByTagName('PrazoEntrega')[0]?.textContent;
+
+                    resultadoHTML += `<strong>Serviço ${codigo}:</strong><br>`;
+
+                    if (erro !== '0') {
+                        temErro = true;
+                        resultadoHTML += `❌ Erro: ${msgErro}<br>`;
+                        
+                        if (msgErro.includes('Acesso negado') || msgErro.includes('Código') || msgErro.includes('Senha')) {
+                            resultadoHTML += `<br><strong>⚠️ CREDENCIAIS INVÁLIDAS!</strong><br>`;
+                            resultadoHTML += `Verifique:<br>`;
+                            resultadoHTML += `- Código da empresa está correto<br>`;
+                            resultadoHTML += `- Senha está correta<br>`;
+                            resultadoHTML += `- Credenciais estão ativas<br>`;
+                        }
+                    } else {
+                        resultadoHTML += `✅ Valor: R$ ${valor}<br>`;
+                        resultadoHTML += `✅ Prazo: ${prazo} dias úteis<br>`;
+                    }
+                    resultadoHTML += `<br>`;
+                }
+
+                if (!temErro) {
+                    resultado.className = 'sucesso';
+                    resultadoHTML += `<strong>🎉 SUCESSO! Suas credenciais estão corretas!</strong><br>`;
+                    resultadoHTML += `<br>A API funciona, mas é ${tempoDecorrido < 30 ? 'rápida' : 'muito lenta'}.`;
+                } else {
+                    resultado.className = 'erro';
+                }
+
+                resultadoHTML += `<br><br><details><summary>Ver XML completo</summary><pre>${escapeHtml(xmlText)}</pre></details>`;
+
+                resultado.innerHTML = resultadoHTML;
+
+            } catch (error) {
+                clearInterval(timerInterval);
+                const tempoDecorrido = Math.floor((Date.now() - startTime) / 1000);
+                
+                resultado.className = 'erro';
+                
+                let mensagem = `<strong>❌ ERRO AO CONSULTAR API</strong><br><br>`;
+                
+                if (error.name === 'AbortError') {
+                    mensagem += `⏱️ TIMEOUT após ${tempoDecorrido} segundos<br><br>`;
+                    mensagem += `<strong>Isso significa:</strong><br>`;
+                    mensagem += `- A API dos Correios NÃO respondeu em 2 minutos<br>`;
+                    mensagem += `- Suas credenciais podem estar corretas, mas a API é muito lenta<br>`;
+                    mensagem += `- Mesmo com credenciais, a API tem esse problema<br><br>`;
+                    mensagem += `<strong>Recomendação:</strong> Use a tabela (já configurada no seu sistema)`;
+                } else {
+                    mensagem += `Erro: ${error.message}<br><br>`;
+                    mensagem += `<strong>Possíveis causas:</strong><br>`;
+                    mensagem += `- CORS bloqueado pelo navegador<br>`;
+                    mensagem += `- API dos Correios fora do ar<br>`;
+                    mensagem += `- Problema de conexão<br>`;
+                }
+
+                resultado.innerHTML = mensagem;
+            }
+
+            btnTestar.disabled = false;
+            btnTestar.textContent = '🔍 Testar Credenciais';
+        });
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>
+

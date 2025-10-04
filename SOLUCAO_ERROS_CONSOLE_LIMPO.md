@@ -234,3 +234,8 @@ O sistema agora:
 
 O comportamento é totalmente esperado e funcional. O usuário final não percebe diferença, pois os valores de fallback são baseados na tabela real dos Correios.
 
+
+
+
+
+

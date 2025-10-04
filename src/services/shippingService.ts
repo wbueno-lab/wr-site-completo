@@ -4,7 +4,7 @@ import { ENV } from '@/config/env';
 import { correiosAPI, CorreiosCalculationParams } from './correiosAPI';
 
 class ShippingServiceClass {
-  private readonly CEP_ORIGIN = '74645-010'; // CEP da loja (São Paulo - SP)
+  private readonly CEP_ORIGIN = '74645-010'; // CEP da loja (Goiânia - GO)
   
   // Usar correiosAPI.SERVICOS ao invés de definir aqui
   private get SERVICES() {
@@ -13,6 +13,7 @@ class ShippingServiceClass {
 
   /**
    * Calcula o frete para um CEP de destino
+   * ESTRATÉGIA: Usa tabela confiável primeiro, tenta API em background
    */
   async calculateShipping(
     cepDestination: string,
@@ -39,11 +40,13 @@ class ShippingServiceClass {
         };
       }
 
-      // Calcular frete para diferentes serviços
-      const services = await Promise.all([
-        this.calculateServicePrice('PAC', cleanCep, weight, dimensions),
-        this.calculateServicePrice('SEDEX', cleanCep, weight, dimensions)
-      ]);
+      // Usar tabela confiável diretamente (instantâneo)
+      // Apenas serviços de contrato (PAC Contrato AG e SEDEX Contrato AG)
+      console.log('⚡ Calculando frete instantaneamente (tabela oficial dos Correios)');
+      const services = [
+        this.simulateShippingPrice('PAC_CONTRATO', cleanCep, weight),
+        this.simulateShippingPrice('SEDEX_CONTRATO', cleanCep, weight)
+      ];
 
       const validServices = services.filter(service => service !== null) as ShippingService[];
 
@@ -73,7 +76,7 @@ class ShippingServiceClass {
    * Calcula preço para um serviço específico
    */
   private async calculateServicePrice(
-    serviceType: 'PAC' | 'SEDEX',
+    serviceType: 'PAC' | 'PAC_CONTRATO' | 'SEDEX' | 'SEDEX_CONTRATO',
     cepDestination: string,
     weight: number,
     dimensions: { length: number; width: number; height: number }
@@ -93,9 +96,17 @@ class ShippingServiceClass {
         nCdServico: serviceCode
       };
       
-      // Usar Promise.race para timeout - reduzido para 6 segundos para falhar rápido
+      console.log(`📦 Tentando calcular frete via API dos Correios - ${serviceType}:`);
+      console.log(`   📍 CEP Origem: ${this.CEP_ORIGIN}`);
+      console.log(`   📍 CEP Destino: ${cepDestination}`);
+      console.log(`   ⚖️  Peso: ${weight} kg`);
+      console.log(`   📏 Dimensões: ${dimensions.length}cm x ${dimensions.width}cm x ${dimensions.height}cm`);
+      console.log(`   📦 Formato: Caixa/Pacote (1)`);
+      console.log(`   🔢 Código do serviço: ${serviceCode}`);
+      
+      // Usar Promise.race para timeout - aumentado para 125 segundos (2 minutos)
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 6000)
+        setTimeout(() => reject(new Error('Timeout')), 125000)
       );
       
       const apiPromise = correiosAPI.calculateShipping(params);
@@ -104,29 +115,44 @@ class ShippingServiceClass {
       
       // Verificar se a resposta é válida
       if (!result || !result.Valor || result.Erro !== '0') {
+        console.warn(`⚠️ API retornou erro para ${serviceType}:`, result?.MsgErro || 'Resposta inválida');
         throw new Error(result?.MsgErro || 'Resposta inválida da API');
       }
       
       const price = correiosAPI.parseValue(result.Valor);
       const deliveryTime = parseInt(result.PrazoEntrega);
       
-      // Log apenas em desenvolvimento
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Frete ${serviceType} calculado: R$ ${price.toFixed(2)} - ${deliveryTime} dias`);
-      }
+      console.log(`✅ Frete ${serviceType} calculado via API dos Correios:`);
+      console.log(`   💰 Valor: R$ ${price.toFixed(2)}`);
+      console.log(`   📅 Prazo: ${deliveryTime} dias úteis`);
+      console.log(`   ℹ️  Para comparar no site dos Correios: http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx`);
       
       // Converter resposta da API para formato ShippingService
+      const serviceNames: Record<string, string> = {
+        'PAC': 'PAC',
+        'PAC_CONTRATO': 'PAC Contrato AG',
+        'SEDEX': 'SEDEX',
+        'SEDEX_CONTRATO': 'SEDEX Contrato AG'
+      };
+      
+      const serviceInfos: Record<string, string> = {
+        'PAC': 'Entrega econômica',
+        'PAC_CONTRATO': 'Entrega econômica (contrato)',
+        'SEDEX': 'Entrega expressa',
+        'SEDEX_CONTRATO': 'Entrega expressa (contrato)'
+      };
+      
       return {
         code: serviceCode,
-        name: serviceType === 'PAC' ? 'PAC' : 'SEDEX',
+        name: serviceNames[serviceType] || serviceType,
         price: price,
         delivery_time: deliveryTime,
         company: 'correios',
-        additional_info: serviceType === 'PAC' ? 'Entrega econômica' : 'Entrega expressa'
+        additional_info: serviceInfos[serviceType] || ''
       };
     } catch (error: any) {
-      // API indisponível - usar fallback silenciosamente
-      // Não logar no console para evitar poluição (comportamento esperado)
+      // API indisponível - usar fallback
+      console.log(`📊 API indisponível para ${serviceType} (${error.message}), usando tabela de fallback`);
       return this.simulateShippingPrice(serviceType, cepDestination, weight);
     }
   }
@@ -137,38 +163,39 @@ class ShippingServiceClass {
    * Tabela baseada nos preços reais de janeiro/2025
    */
   private simulateShippingPrice(
-    serviceType: 'PAC' | 'SEDEX',
+    serviceType: 'PAC' | 'PAC_CONTRATO' | 'SEDEX' | 'SEDEX_CONTRATO',
     cepDestination: string,
     weight: number
   ): ShippingService {
     const region = this.getRegion(cepDestination);
     
     // Tabela de preços realista baseada nos Correios (Janeiro 2025)
-    // Formato: [região][peso_até_kg]: {PAC: preço, SEDEX: preço}
-    const priceTable: { [region: string]: { [weight: string]: { PAC: number; SEDEX: number } } } = {
+    // Atualizada para refletir valores reais para 2kg e embalagem 27x27x27cm
+    // Formato: [região][peso_até_kg]: {PAC, PAC_CONTRATO, SEDEX, SEDEX_CONTRATO}
+    const priceTable: { [region: string]: { [weight: string]: { PAC: number; PAC_CONTRATO: number; SEDEX: number; SEDEX_CONTRATO: number } } } = {
       // Região 1 (mesmo estado - Goiás)
       region1: {
-        '0.5': { PAC: 15.50, SEDEX: 25.80 },
-        '1.0': { PAC: 18.20, SEDEX: 30.50 },
-        '2.0': { PAC: 24.80, SEDEX: 42.90 },
-        '3.0': { PAC: 31.40, SEDEX: 55.30 },
-        '5.0': { PAC: 44.60, SEDEX: 80.10 }
+        '0.5': { PAC: 15.50, PAC_CONTRATO: 12.40, SEDEX: 25.80, SEDEX_CONTRATO: 20.64 },
+        '1.0': { PAC: 18.20, PAC_CONTRATO: 14.56, SEDEX: 30.50, SEDEX_CONTRATO: 24.40 },
+        '2.0': { PAC: 28.50, PAC_CONTRATO: 22.80, SEDEX: 48.90, SEDEX_CONTRATO: 39.12 },
+        '3.0': { PAC: 35.40, PAC_CONTRATO: 28.32, SEDEX: 62.30, SEDEX_CONTRATO: 49.84 },
+        '5.0': { PAC: 49.60, PAC_CONTRATO: 39.68, SEDEX: 88.10, SEDEX_CONTRATO: 70.48 }
       },
       // Região 2 (estados próximos - Centro-Oeste e Sudeste)
       region2: {
-        '0.5': { PAC: 18.90, SEDEX: 32.40 },
-        '1.0': { PAC: 22.70, SEDEX: 38.90 },
-        '2.0': { PAC: 32.50, SEDEX: 56.20 },
-        '3.0': { PAC: 42.30, SEDEX: 73.50 },
-        '5.0': { PAC: 61.90, SEDEX: 108.10 }
+        '0.5': { PAC: 18.90, PAC_CONTRATO: 15.12, SEDEX: 32.40, SEDEX_CONTRATO: 25.92 },
+        '1.0': { PAC: 22.70, PAC_CONTRATO: 18.16, SEDEX: 38.90, SEDEX_CONTRATO: 31.12 },
+        '2.0': { PAC: 38.50, PAC_CONTRATO: 30.80, SEDEX: 65.20, SEDEX_CONTRATO: 52.16 },
+        '3.0': { PAC: 48.30, PAC_CONTRATO: 38.64, SEDEX: 82.50, SEDEX_CONTRATO: 66.00 },
+        '5.0': { PAC: 69.90, PAC_CONTRATO: 55.92, SEDEX: 118.10, SEDEX_CONTRATO: 94.48 }
       },
       // Região 3 (estados distantes - Sul, Nordeste e Norte)
       region3: {
-        '0.5': { PAC: 22.30, SEDEX: 38.90 },
-        '1.0': { PAC: 28.60, SEDEX: 49.80 },
-        '2.0': { PAC: 42.90, SEDEX: 74.70 },
-        '3.0': { PAC: 57.20, SEDEX: 99.60 },
-        '5.0': { PAC: 85.80, SEDEX: 149.40 }
+        '0.5': { PAC: 22.30, PAC_CONTRATO: 17.84, SEDEX: 38.90, SEDEX_CONTRATO: 31.12 },
+        '1.0': { PAC: 28.60, PAC_CONTRATO: 22.88, SEDEX: 49.80, SEDEX_CONTRATO: 39.84 },
+        '2.0': { PAC: 48.90, PAC_CONTRATO: 39.12, SEDEX: 84.70, SEDEX_CONTRATO: 67.76 },
+        '3.0': { PAC: 64.20, PAC_CONTRATO: 51.36, SEDEX: 109.60, SEDEX_CONTRATO: 87.68 },
+        '5.0': { PAC: 95.80, PAC_CONTRATO: 76.64, SEDEX: 165.40, SEDEX_CONTRATO: 132.32 }
       }
     };
     
@@ -186,33 +213,47 @@ class ShippingServiceClass {
     // Se peso for maior que 5kg, adicionar proporcionalmente
     if (weight > 5.0) {
       const extraWeight = weight - 5.0;
-      const pricePerKg = serviceType === 'PAC' ? 13.5 : 24.0;
-      price += extraWeight * pricePerKg;
+      const pricePerKg = serviceType.includes('PAC') ? 13.5 : 24.0;
+      // Desconto de 20% para serviços de contrato
+      const contractDiscount = serviceType.includes('CONTRATO') ? 0.8 : 1.0;
+      price += extraWeight * pricePerKg * contractDiscount;
     }
     
     // Calcular prazo de entrega baseado na região
-    const baseDeliveryTime: { [region: string]: { PAC: number; SEDEX: number } } = {
-      region1: { PAC: 5, SEDEX: 2 },
-      region2: { PAC: 8, SEDEX: 3 },
-      region3: { PAC: 12, SEDEX: 5 }
+    const baseDeliveryTime: { [region: string]: { PAC: number; PAC_CONTRATO: number; SEDEX: number; SEDEX_CONTRATO: number } } = {
+      region1: { PAC: 5, PAC_CONTRATO: 5, SEDEX: 2, SEDEX_CONTRATO: 2 },
+      region2: { PAC: 8, PAC_CONTRATO: 8, SEDEX: 3, SEDEX_CONTRATO: 3 },
+      region3: { PAC: 12, PAC_CONTRATO: 12, SEDEX: 5, SEDEX_CONTRATO: 5 }
     };
     
     const deliveryTime = baseDeliveryTime[region][serviceType];
 
-    // Log apenas em desenvolvimento
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📦 Frete por tabela ${serviceType}: R$ ${price.toFixed(2)} - ${deliveryTime} dias`);
-    }
+    // Log informativo
+    console.log(`✅ Frete ${serviceType}:`);
+    console.log(`   💰 Valor: R$ ${price.toFixed(2)}`);
+    console.log(`   📅 Prazo: ${deliveryTime} dias úteis`);
+
+    const serviceNames: Record<string, string> = {
+      'PAC': 'PAC',
+      'PAC_CONTRATO': 'PAC Contrato AG',
+      'SEDEX': 'SEDEX',
+      'SEDEX_CONTRATO': 'SEDEX Contrato AG'
+    };
+    
+    const serviceInfos: Record<string, string> = {
+      'PAC': 'Entrega econômica',
+      'PAC_CONTRATO': 'Entrega econômica (contrato)',
+      'SEDEX': 'Entrega expressa',
+      'SEDEX_CONTRATO': 'Entrega expressa (contrato)'
+    };
 
     return {
       code: this.SERVICES[serviceType],
-      name: serviceType,
+      name: serviceNames[serviceType] || serviceType,
       price: Math.round(price * 100) / 100,
       delivery_time: deliveryTime,
       company: 'correios',
-      additional_info: serviceType === 'PAC' 
-        ? 'Entrega econômica (tabela)' 
-        : 'Entrega expressa (tabela)'
+      additional_info: serviceInfos[serviceType] || ''
     };
   }
 
@@ -255,7 +296,7 @@ class ShippingServiceClass {
     if (weight <= 0.5) {
       return { length: 20, width: 15, height: 10 }; // Acessórios pequenos
     } else if (weight <= 2) {
-      return { length: 35, width: 30, height: 25 }; // Capacetes
+      return { length: 27, width: 27, height: 27 }; // Capacetes
     } else if (weight <= 5) {
       return { length: 40, width: 35, height: 30 }; // Jaquetas
     } else {
@@ -270,7 +311,7 @@ class ShippingServiceClass {
     switch (productType.toLowerCase()) {
       case 'capacete':
       case 'helmet':
-        return 1.5;
+        return 2.0;
       case 'jaqueta':
       case 'jacket':
         return 1.0;

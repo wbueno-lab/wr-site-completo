@@ -25,10 +25,22 @@ type FetchOptions = RequestInit & {
 
 // Data Types
 type Product = Tables<'products'>;
-type Order = Tables<'orders'>;
+type BaseOrder = Tables<'orders'>;
+type OrderItem = Tables<'order_items'>;
 type Category = Tables<'categories'>;
 type Brand = Tables<'brands'>;
 type ContactMessage = Tables<'contact_messages'>;
+
+// Tipo estendido para OrderItem que inclui campos adicionais
+interface ExtendedOrderItem extends OrderItem {
+  selected_size?: number | string | null;
+  product?: Product | null;
+}
+
+// Tipo estendido para Order que inclui order_items
+interface Order extends BaseOrder {
+  order_items?: ExtendedOrderItem[];
+}
 
 // Context Types
 interface RealtimeContextType {
@@ -236,6 +248,7 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [excludedDeliveredOrders, setExcludedDeliveredOrders] = useState<Set<string>>(new Set());
   const [lastAuthState, setLastAuthState] = useState<{ user: any; isAuthenticated: boolean } | null>(null);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Flag para controlar carregamento inicial
   const { toast } = useToast();
   const { profile } = useAuth();
   const { user, isAuthenticated } = useAuthState();
@@ -271,11 +284,45 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
         setBrands(tempBrands);
       }
 
-      // Carregar pedidos
+      // Carregar pedidos com order_items
+      console.log('[RealtimeContext] Carregando pedidos...');
       const ordersResponse = await fetchFromSupabase<Order[]>('orders?select=*,order_items(id,quantity,unit_price,total_price,product_id,selected_size,product_snapshot,product:products(*))&order=created_at.desc');
-      if (ordersResponse.data) {
-        setOrders(ordersResponse.data);
+      console.log('[RealtimeContext] Pedidos carregados:', ordersResponse.data?.length, 'pedidos');
+      
+      if (ordersResponse.data && ordersResponse.data.length > 0) {
+        console.log('[RealtimeContext] Primeiro pedido (raw):', ordersResponse.data[0]);
+        console.log('[RealtimeContext] Order_items do primeiro pedido (raw):', (ordersResponse.data[0] as any).order_items);
+        
+        // SEMPRE carregar order_items separadamente para garantir que temos os dados
+        const ordersWithItems = await Promise.all(
+          ordersResponse.data.map(async (order: any) => {
+            console.log(`[RealtimeContext] Carregando itens do pedido ${order.id}...`);
+            // Buscar order_items separadamente para TODOS os pedidos
+            const itemsResponse = await fetchFromSupabase<any[]>(
+              `order_items?select=id,quantity,unit_price,total_price,product_id,selected_size,product_snapshot,product:products(*)&order_id=eq.${order.id}`
+            );
+            console.log(`[RealtimeContext] ✅ Itens carregados para pedido ${order.id}:`, itemsResponse.data?.length || 0, 'itens');
+            
+            const orderWithItems = {
+              ...order,
+              order_items: itemsResponse.data || []
+            };
+            
+            console.log(`[RealtimeContext] Pedido ${order.id} final com itens:`, orderWithItems.order_items?.length);
+            return orderWithItems;
+          })
+        );
+        
+        console.log('[RealtimeContext] ✅ TODOS os pedidos processados com itens:', ordersWithItems.map((o: any) => ({ 
+          id: o.id, 
+          items_count: o.order_items?.length || 0 
+        })));
+        
+        setOrders(ordersWithItems);
+        setInitialDataLoaded(true); // Marca que os dados iniciais foram carregados completamente
+        console.log('[RealtimeContext] ✅ Dados iniciais completamente carregados, ativando realtime...');
       } else {
+        console.log('[RealtimeContext] Nenhum pedido encontrado');
         setOrders([]);
       }
 
@@ -675,13 +722,56 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
     });
 
     // Orders
-    const ordersChannel = setupChannel<Order>('realtime-orders', 'orders', (payload) => {
+    const ordersChannel = setupChannel<Order>('realtime-orders', 'orders', async (payload) => {
+      // IMPORTANTE: Ignorar eventos realtime até que os dados iniciais estejam carregados
+      if (!initialDataLoaded) {
+        console.log('[RealtimeContext] ⚠️ Ignorando evento realtime até dados iniciais carregarem:', payload.eventType);
+        return;
+      }
+      
+      console.log('[RealtimeContext] 📡 Evento realtime recebido:', payload.eventType, 'para pedido:', (payload.new as any)?.id || (payload.old as any)?.id);
+      
       setOrders((prev) => {
         if (payload.eventType === 'INSERT') {
-          return [payload.new, ...prev];
+          // Para novos pedidos, precisamos carregar os order_items
+          const newOrder = payload.new as any;
+          
+          console.log('[RealtimeContext] ➕ Novo pedido inserido, carregando itens...');
+          
+          // Carregar order_items do novo pedido em background
+          (async () => {
+            const itemsResponse = await fetchFromSupabase<any[]>(
+              `order_items?select=id,quantity,unit_price,total_price,product_id,selected_size,product_snapshot,product:products(*)&order_id=eq.${newOrder.id}`
+            );
+            console.log('[RealtimeContext] ✅ Itens do novo pedido carregados:', itemsResponse.data?.length || 0);
+            if (itemsResponse.data) {
+              setOrders((prevOrders) => 
+                prevOrders.map((o: any) => 
+                  o.id === newOrder.id ? { ...o, order_items: itemsResponse.data } : o
+                )
+              );
+            }
+          })();
+          
+          return [{ ...newOrder, order_items: [] }, ...prev];
         } else if (payload.eventType === 'UPDATE') {
-          return prev.map((o) => o.id === payload.new.id ? { ...o, ...payload.new } : o);
+          // IMPORTANTE: Manter os order_items existentes ao atualizar
+          console.log('[RealtimeContext] 🔄 Atualizando pedido, preservando order_items');
+          return prev.map((o: any) => {
+            if (o.id === payload.new.id) {
+              const itemsCount = o.order_items?.length || 0;
+              const updated = { 
+                ...o, 
+                ...payload.new,
+                order_items: o.order_items // Manter order_items existentes
+              };
+              console.log('[RealtimeContext] ✅ Pedido atualizado, order_items preservados:', itemsCount, 'itens');
+              return updated;
+            }
+            return o;
+          });
         } else if (payload.eventType === 'DELETE') {
+          console.log('[RealtimeContext] 🗑️ Pedido excluído');
           return prev.filter((o) => o.id !== payload.old.id);
         }
         return prev;
@@ -744,9 +834,19 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
     };
   }, []);
 
+  // Debug: Log dos pedidos antes de criar o value
+  if (orders.length > 0) {
+    console.log('[RealtimeContext] orders state antes do value:', orders.map((o: any) => ({
+      id: o.id,
+      items_count: o.order_items?.length || 0,
+      order_items_exists: !!o.order_items,
+      order_items_raw: o.order_items
+    })));
+  }
+
   const value: RealtimeContextType = {
     products,
-    orders,
+    orders: orders as Order[], // Força o tipo correto
     categories,
     brands,
     contactMessages,
@@ -758,6 +858,16 @@ export const RealtimeProvider: FC<RealtimeProviderProps> = ({ children }) => {
     includeDeliveredOrder,
     refreshData,
   };
+
+  // Debug: Log do value completo
+  if (value.orders.length > 0) {
+    console.log('[RealtimeContext] value.orders após criação:', value.orders.map((o: any) => ({
+      id: o.id,
+      items_count: o.order_items?.length || 0,
+      order_items_exists: !!o.order_items,
+      order_items_raw: o.order_items
+    })));
+  }
 
   return (
     <RealtimeContext.Provider value={value}>
@@ -771,5 +881,15 @@ export const useRealtime = (): RealtimeContextType => {
   if (context === undefined) {
     throw new Error('useRealtime deve ser usado dentro de um RealtimeProvider');
   }
+  
+  // Debug: Log do que está sendo retornado pelo hook
+  if (context.orders && context.orders.length > 0) {
+    console.log('[useRealtime] Hook retornando orders:', context.orders.map((o: any) => ({
+      id: o.id,
+      items_count: o.order_items?.length || 0,
+      order_items_exists: !!o.order_items
+    })));
+  }
+  
   return context;
 };

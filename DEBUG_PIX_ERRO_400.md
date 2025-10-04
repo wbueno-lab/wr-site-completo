@@ -112,3 +112,12 @@ Com credenciais de teste, você pode testar pagamentos sem medo!
 
 **Aguardando:** Teste novamente e me envie a mensagem de erro detalhada do console! 🚀
 
+
+
+
+
+
+
+
+
+

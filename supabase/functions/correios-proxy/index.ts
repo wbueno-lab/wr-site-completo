@@ -118,9 +118,9 @@ serve(async (req) => {
       sCepDestino: params.sCepDestino.replace(/\D/g, ''),
       nVlPeso: params.nVlPeso,
       nCdFormato: params.nCdFormato || '1',
-      nVlComprimento: params.nVlComprimento || '20',
-      nVlAltura: params.nVlAltura || '10',
-      nVlLargura: params.nVlLargura || '15',
+      nVlComprimento: params.nVlComprimento || '27',
+      nVlAltura: params.nVlAltura || '27',
+      nVlLargura: params.nVlLargura || '27',
       nVlDiametro: '0',
       sCdMaoPropria: 'N',
       nVlValorDeclarado: '0',
@@ -132,6 +132,10 @@ serve(async (req) => {
     if (params.nCdEmpresa && params.sDsSenha) {
       baseParams.append('nCdEmpresa', params.nCdEmpresa);
       baseParams.append('sDsSenha', params.sDsSenha);
+      console.log('🔐 Usando credenciais de contrato dos Correios');
+      console.log('   📝 Empresa:', params.nCdEmpresa.substring(0, 4) + '****');
+    } else {
+      console.log('⚠️ Consultando sem credenciais (API pública - mais lenta)');
     }
 
     const url = `http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?${baseParams.toString()}`;
@@ -140,7 +144,7 @@ serve(async (req) => {
 
     // Fazer requisição para API dos Correios com timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 segundos (2 minutos)
 
     try {
       const response = await fetch(url, {
@@ -200,7 +204,7 @@ serve(async (req) => {
       clearTimeout(timeoutId);
       
       if (fetchError.name === 'AbortError') {
-        throw new Error('Timeout: API dos Correios não respondeu em 15 segundos');
+        throw new Error('Timeout: API dos Correios não respondeu em 120 segundos');
       }
       throw fetchError;
     }

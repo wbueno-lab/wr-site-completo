@@ -61,3 +61,4 @@ COMMENT ON FUNCTION get_brands_by_product_type(TEXT) IS 'Função para buscar ma
 -- Exemplos de uso da função:
 -- SELECT * FROM get_brands_by_product_type('capacetes');
 -- SELECT * FROM get_brands_by_product_type('jaquetas');
+p

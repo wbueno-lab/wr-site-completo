@@ -138,8 +138,8 @@ const ShippingCalculator = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Truck className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 text-white">
+          <Truck className="h-5 w-5 text-white" />
           Frete e Entrega
         </CardTitle>
       </CardHeader>
@@ -147,7 +147,7 @@ const ShippingCalculator = ({
       <CardContent className="space-y-4">
         {/* Calculadora de CEP */}
         <div className="space-y-2">
-          <Label htmlFor="cep">CEP de Entrega</Label>
+          <Label htmlFor="cep" className="text-white font-medium">CEP de Entrega</Label>
           <div className="flex gap-2">
             <div className="flex-1">
               <Input
@@ -157,7 +157,7 @@ const ShippingCalculator = ({
                 value={inputCep}
                 onChange={(e) => setInputCep(formatCep(e.target.value))}
                 maxLength={9}
-                className="font-mono"
+                className="font-mono text-white bg-gray-800"
               />
             </div>
             <Button 
@@ -180,7 +180,7 @@ const ShippingCalculator = ({
           </div>
           
           {!hasCalculated && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-300">
               Digite seu CEP para calcular o frete
             </p>
           )}
@@ -197,7 +197,7 @@ const ShippingCalculator = ({
         {/* Serviços de Entrega */}
         {shippingServices.length > 0 && (
           <div className="space-y-3">
-            <Label>Escolha o tipo de entrega:</Label>
+            <Label className="text-white font-medium">Escolha o tipo de entrega:</Label>
             
             <RadioGroup 
               value={selectedService} 
@@ -218,8 +218,8 @@ const ShippingCalculator = ({
                         <div className="flex items-center gap-3">
                           {getCompanyIcon(service.company)}
                           <div>
-                            <p className="font-semibold">{service.name}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <p className="font-semibold text-white">{service.name}</p>
+                            <div className="flex items-center gap-2 text-sm text-gray-300">
                               <Clock className="h-3 w-3" />
                               <span>{formatDeliveryTime(service.delivery_time)}</span>
                               {service.additional_info && (
@@ -238,7 +238,7 @@ const ShippingCalculator = ({
                               Grátis
                             </Badge>
                           ) : (
-                            <p className="font-semibold text-lg">
+                            <p className="font-semibold text-lg text-white">
                               R$ {service.price.toFixed(2).replace('.', ',')}
                             </p>
                           )}
@@ -258,7 +258,7 @@ const ShippingCalculator = ({
             <Separator />
             
             <div className="space-y-2">
-              <h4 className="font-semibold flex items-center gap-2">
+              <h4 className="font-semibold flex items-center gap-2 text-white">
                 <MapPin className="h-4 w-4" />
                 Detalhes da Entrega
               </h4>
@@ -266,20 +266,20 @@ const ShippingCalculator = ({
               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Serviço:</span>
-                    <span className="font-semibold">{selectedServiceData.name}</span>
+                    <span className="text-blue-700 font-medium">Serviço:</span>
+                    <span className="font-semibold text-gray-900">{selectedServiceData.name}</span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Prazo:</span>
-                    <span className="font-semibold">
+                    <span className="text-blue-700 font-medium">Prazo:</span>
+                    <span className="font-semibold text-gray-900">
                       {formatDeliveryTime(selectedServiceData.delivery_time)}
                     </span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Valor:</span>
-                    <span className="font-semibold">
+                    <span className="text-blue-700 font-medium">Valor:</span>
+                    <span className="font-semibold text-gray-900">
                       {selectedServiceData.price === 0 
                         ? 'Grátis' 
                         : `R$ ${selectedServiceData.price.toFixed(2).replace('.', ',')}`
@@ -288,14 +288,14 @@ const ShippingCalculator = ({
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-blue-700">CEP:</span>
-                    <span className="font-mono">{formatCep(inputCep)}</span>
+                    <span className="text-blue-700 font-medium">CEP:</span>
+                    <span className="font-mono text-gray-900">{formatCep(inputCep)}</span>
                   </div>
                   
                   {totalWeight && (
                     <div className="flex justify-between">
-                      <span className="text-blue-700">Peso:</span>
-                      <span>{totalWeight.toFixed(1)} kg</span>
+                      <span className="text-blue-700 font-medium">Peso:</span>
+                      <span className="text-gray-900">{totalWeight.toFixed(1)} kg</span>
                     </div>
                   )}
                 </div>
@@ -305,12 +305,9 @@ const ShippingCalculator = ({
         )}
 
         {/* Informações Gerais */}
-        <div className="text-center text-xs text-muted-foreground space-y-1">
+        <div className="text-center text-xs text-gray-300 space-y-1">
           <p>• Prazos contados em dias úteis após confirmação do pagamento</p>
           <p>• Frete calculado com base no CEP de destino</p>
-          {process.env.NODE_ENV === 'development' && (
-            <p className="text-yellow-600">• Valores simulados para desenvolvimento</p>
-          )}
         </div>
       </CardContent>
     </Card>

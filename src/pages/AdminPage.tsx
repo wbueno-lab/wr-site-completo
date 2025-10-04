@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/UnifiedAuthContext';
 import { useRealtime } from '@/contexts/RealtimeContext';
 import { useAdminPermissionsRobust as useAdminPermissions } from '@/hooks/useAdminPermissionsRobust';
@@ -13,7 +13,29 @@ import { AdminDashboard, ProductManager, OrderManager, MessageManager, JaquetasM
 const AdminPage = () => {
   const { user, profile } = useAuth();
   const { isAdmin, isLoading: isPermissionLoading, error: permissionError, revalidatePermissions } = useAdminPermissions();
-  const { products, orders, categories, brands, contactMessages, isLoading: isRealtimeLoading, refreshData } = useRealtime();
+  const { products, orders: rawOrders, categories, brands, contactMessages, isLoading: isRealtimeLoading, refreshData } = useRealtime();
+  
+  // UseMemo para preservar os order_items nos pedidos
+  const orders = useMemo(() => {
+    console.log('[AdminPage] useMemo - rawOrders:', rawOrders.map((o: any) => ({
+      id: o.id,
+      items_count: o.order_items?.length || 0,
+      has_items: !!o.order_items
+    })));
+    
+    // Preservar os dados completos dos pedidos
+    return rawOrders.map((order: any) => ({
+      ...order,
+      order_items: order.order_items || []
+    }));
+  }, [rawOrders]);
+  
+  // Debug: Log dos pedidos após useMemo
+  console.log('[AdminPage] Pedidos após useMemo:', orders.map((o: any) => ({
+    id: o.id,
+    items_count: o.order_items?.length || 0
+  })));
+  
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isInitializing, setIsInitializing] = useState(true);

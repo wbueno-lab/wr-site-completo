@@ -106,14 +106,33 @@ class MercadoPagoService {
    */
   async createPixPayment(orderData: OrderData): Promise<PaymentResult> {
     try {
+      // Validar dados obrigatórios
+      if (!orderData.customer_email || !orderData.customer_email.includes('@')) {
+        throw new Error('Email do cliente é obrigatório e deve ser válido');
+      }
+
+      if (!orderData.customer_name || orderData.customer_name.trim().length < 3) {
+        throw new Error('Nome do cliente é obrigatório');
+      }
+
+      // Garantir que o valor seja um número válido com 2 casas decimais
+      const amount = Math.round(orderData.total_amount * 100) / 100;
+
+      const firstName = orderData.customer_name.trim().split(' ')[0];
+      const lastName = orderData.customer_name.trim().split(' ').slice(1).join(' ') || firstName;
+
       const paymentData: MercadoPagoPixPaymentRequest = {
-        transaction_amount: orderData.total_amount,
-        description: this.buildDescription(orderData.items),
+        transaction_amount: amount,
+        description: this.buildDescription(orderData.items).substring(0, 255), // Limitar descrição a 255 caracteres
         payment_method_id: 'pix',
         payer: {
-          email: orderData.customer_email,
-          first_name: orderData.customer_name.split(' ')[0],
-          last_name: orderData.customer_name.split(' ').slice(1).join(' ') || orderData.customer_name
+          email: orderData.customer_email.toLowerCase().trim(),
+          first_name: firstName,
+          last_name: lastName,
+          identification: orderData.customer_cpf ? {
+            type: 'CPF',
+            number: orderData.customer_cpf.replace(/\D/g, '')
+          } : undefined
         },
         external_reference: `order_${Date.now()}`,
         notification_url: this.getWebhookUrl()

@@ -167,3 +167,12 @@ As Edge Functions agora:
 
 **Tudo funcionando? Qualquer dúvida, consulte os documentos mencionados acima!** 🚀
 
+
+
+
+
+
+
+
+
+

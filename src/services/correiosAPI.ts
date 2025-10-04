@@ -201,6 +201,7 @@ class CorreiosAPIService {
    * Fazer requisição HTTP - Tenta apenas proxy Supabase
    */
   private async makeRequest(url: string): Promise<string> {
+    console.log('🔗 Fazendo requisição via proxy Supabase...');
     // Tentar proxy Supabase (sem logs de erro pois o fallback é silencioso)
     return await this.makeRequestViaProxy(url);
   }
@@ -217,12 +218,24 @@ class CorreiosAPIService {
         params[key] = value;
       });
 
+      // Adicionar credenciais dos Correios se disponíveis
+      if (this.credentials.nCdEmpresa && this.credentials.sDsSenha) {
+        params.nCdEmpresa = this.credentials.nCdEmpresa;
+        params.sDsSenha = this.credentials.sDsSenha;
+        console.log('🔐 Enviando credenciais para Edge Function');
+        console.log('   📝 Código da Empresa:', this.credentials.nCdEmpresa.substring(0, 4) + '****');
+      } else {
+        console.log('⚠️ Credenciais dos Correios não configuradas no .env');
+      }
+
       const supabaseUrl = ENV.SUPABASE_URL;
       if (!supabaseUrl) {
+        console.error('❌ SUPABASE_URL não configurado');
         throw new Error('SUPABASE_URL não configurado');
       }
 
       const proxyUrl = `${supabaseUrl}/functions/v1/correios-proxy`;
+      console.log('📡 Chamando Edge Function:', proxyUrl);
 
       const response = await fetch(proxyUrl, {
         method: 'POST',
@@ -231,24 +244,30 @@ class CorreiosAPIService {
           'apikey': ENV.SUPABASE_ANON_KEY
         },
         body: JSON.stringify({ params }),
-        signal: AbortSignal.timeout(5000) // Timeout reduzido para 5 segundos
+        signal: AbortSignal.timeout(120000) // Timeout aumentado para 120 segundos (2 minutos)
       });
 
+      console.log('📥 Resposta da Edge Function:', response.status, response.statusText);
+
       if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Sem detalhes');
+        console.error(`❌ Proxy retornou status ${response.status}:`, errorText);
         throw new Error(`Proxy retornou status ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('📦 Dados recebidos do proxy:', { success: data.success, hasXml: !!data.xmlRaw });
 
       if (!data.success) {
+        console.error('❌ Erro no proxy:', data.error);
         throw new Error(data.error || 'Erro no proxy');
       }
 
       // Retornar XML bruto do proxy
       return data.xmlRaw || '';
     } catch (error: any) {
-      // Não logar erro no console - será tratado no fallback silenciosamente
-      throw new Error('Proxy Supabase indisponível');
+      console.error('❌ Erro ao chamar proxy Supabase:', error.message);
+      throw new Error('Proxy Supabase indisponível: ' + error.message);
     }
   }
 

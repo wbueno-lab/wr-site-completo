@@ -31,8 +31,6 @@ serve(async (req) => {
       paymentMethodId: paymentData.payment_method_id,
       hasEmail: !!paymentData.payer?.email
     });
-    
-    console.log('📦 Dados completos do pagamento:', JSON.stringify(paymentData, null, 2));
 
     // Fazer requisição para API do Mercado Pago
     const response = await fetch(MERCADO_PAGO_API_URL, {
@@ -123,18 +121,34 @@ serve(async (req) => {
 
       // Criar itens do pedido
       if (orderData.items && orderData.items.length > 0) {
-        const orderItems = orderData.items.map((item: any) => ({
-          order_id: order.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.price,
-          product_name: item.product_name,
-          selected_size: item.selectedSize
-        }));
+        const orderItems = orderData.items.map((item: any) => {
+          const unitPrice = item.price || item.unit_price || 0;
+          return {
+            order_id: order.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: unitPrice,
+            total_price: unitPrice * item.quantity,
+            selected_size: item.selectedSize || item.selected_size || item.helmet_size || null,
+            // Usar o product_snapshot completo que vem do frontend (já inclui image_url)
+            product_snapshot: item.product_snapshot ? {
+              ...item.product_snapshot,
+              selected_size: item.selectedSize || item.selected_size || item.helmet_size || null
+            } : {
+              name: item.product_name,
+              price: unitPrice,
+              image_url: null
+            }
+          };
+        });
 
-        await supabaseClient
+        const { error: itemsError } = await supabaseClient
           .from('order_items')
           .insert(orderItems);
+          
+        if (itemsError) {
+          console.error('❌ Erro ao criar order_items:', itemsError);
+        }
       }
     }
 

@@ -245,3 +245,12 @@ O erro 404 do `newPaymentService.ts` foi completamente corrigido. Todas as impor
 Se encontrar outros erros no console ou precisar de ajuda adicional, é só avisar! 🚀
 
 
+
+
+
+
+
+
+
+
+
